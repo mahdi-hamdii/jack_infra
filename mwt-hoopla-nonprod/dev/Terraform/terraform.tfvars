@@ -42,9 +42,28 @@ transit_gateway = {
 ############################################################
 
 vpc_endpoints = {
-  s3 = {
-    service         = "s3"
-    service_type    = "Gateway"
-    route_table_ids = ["rtb-057752d28c786d472"]
+
+  create_security_group      = true
+  security_group_name_prefix = "vpc_endpoints_"
+  security_group_description = "VPC endpoint security group"
+
+  security_group_rules = {
+    ingress_https = {
+      protocol    = "tcp"
+      from_port   = 443
+      to_port     = 443
+      type        = "ingress"
+      description = "HTTPS from VPC"
+      #   cidr_blocks = ["10.110.0.0/16"] If ommited use the VPC CIDR
+    }
   }
+
+  endpoints = {
+    s3 = {
+      service      = "s3"
+      service_type = "Gateway"
+      #   route_table_ids = ["rtb-XXXXXX"] If ommited use the VPC Route Table ids
+    }
+  }
+
 }

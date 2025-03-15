@@ -3,7 +3,6 @@
 ############################################################
 
 
-
 ############################################################
 # VPC
 ############################################################
@@ -47,25 +46,28 @@ module "vpc_endpoints" {
   source  = "terraform-aws-modules/vpc/aws//modules/vpc-endpoints"
   version = "5.18.1"
 
-  for_each = var.vpc_endpoints
-
   vpc_id = module.vpc.vpc_id
 
-  create_security_group      = true
-  security_group_name_prefix = "vpc_endpoints_"
-  security_group_description = "VPC endpoint security group"
+  create_security_group      = var.vpc_endpoints.create_security_group
+  security_group_name_prefix = var.vpc_endpoints.security_group_name_prefix
+  security_group_description = var.vpc_endpoints.security_group_description
+
   security_group_rules = {
-    ingress_https = {
-      description = "HTTPS from VPC"
-      cidr_blocks = [module.vpc.vpc_cidr_block]
+    for key, value in var.vpc_endpoints.security_group_rules : key => {
+      protocol    = lookup(value, "protocol", "tcp")
+      from_port   = lookup(value, "from_port", 443)
+      to_port     = lookup(value, "to_port", 443)
+      type        = lookup(value, "type", "ingress")
+      cidr_blocks = lookup(value, "cidr_blocks", [module.vpc.vpc_cidr_block])
+      description = lookup(value, "description", "VPC Endpoint Security Group Rule")
     }
   }
 
   endpoints = {
-    s3 = {
-      service         = "s3"
-      service_type    = "Gateway"
-      route_table_ids = module.vpc.private_route_table_ids
+    for key, value in var.vpc_endpoints.endpoints : key => {
+      service         = value.service
+      service_type    = lookup(value, "service_type", "Gateway")
+      route_table_ids = lookup(value, "route_table_ids", module.vpc.private_route_table_ids)
     }
   }
 
