@@ -100,31 +100,34 @@ module "security_groups" {
 # Route 53
 ############################################################
 
-# module "subdomain" {
-#   source = "../../../modules/subdomain"
+module "route53_subdomain" {
+  source = "../../../modules/route53_subdomain"
 
-#   for_each = { for subdomain in var.subdomains : subdomain.name => subdomain }
+  for_each = { for subdomain in var.route53_subdomain : subdomain.domain => subdomain }
 
-#   provider = {
-#     aws.nonprod_account = aws.nonprod_account
-#     aws.prod_account    = aws.prod_account
-#   }
+  providers = {
+    aws.nonprod_account = aws.nonprod_account
+    aws.prod_account    = aws.prod_account
+  }
 
-#   domain                     = each.value.domain
-#   private_hosted_zone_vpc_id = module.vpc.vpc_id
-# }
+  domain                     = each.value.domain
+  private_hosted_zone_vpc_id = module.vpc.vpc_id
+}
 
-# resource "aws_route53_resolver_endpoint" "inbound" {
-#   name               = "InboundEndpoint"
-#   direction          = "INBOUND"
-#   security_group_ids = [module.security_groups["route53_rslvr_in"].security_group_id]
+resource "aws_route53_resolver_endpoint" "inbound" {
+  name      = var.route53_resolver_endpoint.name
+  direction = var.route53_resolver_endpoint.direction
 
-#   dynamic "ip_address" {
-#     for_each = toset(module.vpc.private_subnets)
-#     content {
-#       subnet_id = ip_address.value
-#     }
-#   }
+  security_group_ids = [module.security_groups[var.route53_resolver_endpoint.security_group_keyname].security_group_id]
 
-#   protocols = ["Do53", "DoH"]
-# }
+  protocols = var.route53_resolver_endpoint.protocols
+
+
+  dynamic "ip_address" {
+    for_each = toset(lookup(var.route53_resolver_endpoint, "ip_addresses", module.vpc.private_subnets))
+    content {
+      subnet_id = ip_address.value
+    }
+  }
+
+}

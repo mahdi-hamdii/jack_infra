@@ -252,3 +252,42 @@ security_groups = {
     }
   }
 }
+
+############################################################
+# Route 53 subdomains
+############################################################
+
+route53_subdomain = [
+  {
+    domain                    = "dev.hoopladigital.cloud",
+    subject_alternative_names = ["*.dev.hoopladigital.cloud"]
+  },
+  {
+    domain                    = "test.hoopladigital.cloud",
+    subject_alternative_names = ["*.test.hoopladigital.cloud"]
+  },
+  {
+    domain                    = "staging.hoopladigital.cloud",
+    subject_alternative_names = ["*.staging.hoopladigital.cloud"]
+  },
+  {
+    domain                    = "dev.hoopladigital.com",
+    subject_alternative_names = ["*.dev.hoopladigital.com"]
+  },
+  {
+    domain                    = "test.hoopladigital.com",
+    subject_alternative_names = ["*.test.hoopladigital.com"]
+  },
+  {
+    domain                    = "staging.hoopladigital.com",
+    subject_alternative_names = ["*.staging.hoopladigital.com"]
+  }
+]
+
+route53_resolver_endpoint = {
+  name                   = "InboundEndpoint"
+  direction              = "INBOUND"
+  security_group_keyname = "route53_rslvr_in"
+  protocols              = ["Do53", "DoH"]
+  # ip_addresses           = ["10.110.10.0/23", "10.110.12.0/23", "10.110.14.0/23"] #if not specified use the VPC private subnets
+}

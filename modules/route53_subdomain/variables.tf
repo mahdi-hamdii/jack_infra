@@ -1,4 +1,4 @@
-variable "domain_name" {
+variable "domain" {
   type        = string
   description = "The domain name to create the subdomain for"
 }

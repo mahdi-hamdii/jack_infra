@@ -1,5 +1,5 @@
 locals {
-  domain_name   = trimsuffix(var.domain_name, ".")
+  domain_name   = trimsuffix(var.domain, ".")
   parts         = split(".", local.domain_name)
   parent_domain = join(".", slice(local.parts, 1, length(local.parts)))
   resolver_name = replace(local.domain_name, ".", "_")

@@ -53,3 +53,16 @@ variable "security_groups" {
   description = "Security Groups Configuration"
 }
 
+############################################################
+# Route 53 subdomains
+############################################################
+
+variable "route53_subdomain" {
+  type        = any
+  description = "Route 53 subdomains Configuration"
+}
+
+variable "route53_resolver_endpoint" {
+  type        = any
+  description = "Route 53 resolver endpoint Configuration"
+}
