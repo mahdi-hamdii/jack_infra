@@ -29,11 +29,11 @@ module "vpc" {
 # Transit Gateway
 ############################################################
 
-resource "aws_ec2_transit_gateway_vpc_attachment" "ec2_transit_gateway_vpc_attachment" {
-  subnet_ids         = module.vpc.private_subnets
-  transit_gateway_id = var.transit_gateway.id
-  vpc_id             = module.vpc.vpc_id
-}
+# resource "aws_ec2_transit_gateway_vpc_attachment" "ec2_transit_gateway_vpc_attachment" {
+#   subnet_ids         = module.vpc.private_subnets
+#   transit_gateway_id = var.transit_gateway.id
+#   vpc_id             = module.vpc.vpc_id
+# }
 
 ############################################################
 # VPC Endpoints
