@@ -81,3 +81,24 @@ variable "route53_resolver_endpoint" {
   type        = any
   description = "Route 53 resolver endpoint Configuration"
 }
+
+############################################################
+# EC2 Instance
+############################################################
+
+variable "ec2_instance" {
+  description = "EC2 instance configuration"
+  type = object({
+    instance_type               = string
+    ami                         = string
+    associate_public_ip_address = bool
+    security_group_keyname      = string
+    enable_volume_tags          = bool
+    root_block_device = list(object({
+      encrypted   = bool
+      volume_type = string
+      volume_size = number
+    }))
+    tags = map(string)
+  })
+}

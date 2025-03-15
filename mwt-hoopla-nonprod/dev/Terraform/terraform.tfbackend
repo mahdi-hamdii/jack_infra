@@ -1,3 +1,3 @@
-bucket = "mwt.hoopla.nonprod.tf.backend"
+bucket = "jack-infra-bucket"
 key    = "base/terraform.tfsatae"
 region = "us-east-1"

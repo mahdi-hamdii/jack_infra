@@ -100,34 +100,57 @@ module "security_groups" {
 # Route 53
 ############################################################
 
-module "route53_subdomain" {
-  source = "../../../modules/route53_subdomain"
+# module "route53_subdomain" {
+#   source = "../../../modules/route53_subdomain"
 
-  for_each = { for subdomain in var.route53_subdomain : subdomain.domain => subdomain }
+#   for_each = { for subdomain in var.route53_subdomain : subdomain.domain => subdomain }
 
-  providers = {
-    aws.nonprod_account = aws
-    aws.prod_account    = aws.mwt-hoopla-prod
-  }
+#   providers = {
+#     aws.nonprod_account = aws
+#     aws.prod_account    = aws.mwt-hoopla-prod
+#   }
 
-  domain                     = each.value.domain
-  private_hosted_zone_vpc_id = module.vpc.vpc_id
-}
+#   domain                     = each.value.domain
+#   private_hosted_zone_vpc_id = module.vpc.vpc_id
+# }
 
-resource "aws_route53_resolver_endpoint" "inbound" {
-  name      = var.route53_resolver_endpoint.name
-  direction = var.route53_resolver_endpoint.direction
+# resource "aws_route53_resolver_endpoint" "inbound" {
+#   name      = var.route53_resolver_endpoint.name
+#   direction = var.route53_resolver_endpoint.direction
 
-  security_group_ids = [module.security_groups[var.route53_resolver_endpoint.security_group_keyname].security_group_id]
+#   security_group_ids = [module.security_groups[var.route53_resolver_endpoint.security_group_keyname].security_group_id]
 
-  protocols = var.route53_resolver_endpoint.protocols
+#   protocols = var.route53_resolver_endpoint.protocols
 
 
-  dynamic "ip_address" {
-    for_each = toset(lookup(var.route53_resolver_endpoint, "ip_addresses", module.vpc.private_subnets))
-    content {
-      subnet_id = ip_address.value
-    }
-  }
+#   dynamic "ip_address" {
+#     for_each = toset(lookup(var.route53_resolver_endpoint, "ip_addresses", module.vpc.private_subnets))
+#     content {
+#       subnet_id = ip_address.value
+#     }
+#   }
 
+# }
+
+############################################################
+# EC2 Instance
+############################################################
+
+module "ec2_instance" {
+  source  = "terraform-aws-modules/ec2-instance/aws"
+  version = "5.6.0"
+
+  name = "${var.businessunit}_${var.environment}_instance"
+
+  instance_type = var.ec2_instance.instance_type
+  ami           = var.ec2_instance.ami
+
+  subnet_id                   = module.vpc.private_subnets[0]
+  vpc_security_group_ids      = [module.security_groups[var.ec2_instance.security_group_keyname].security_group_id]
+  associate_public_ip_address = var.ec2_instance.associate_public_ip_address
+
+  enable_volume_tags = var.ec2_instance.enable_volume_tags
+  root_block_device  = var.ec2_instance.root_block_device
+
+  tags = var.ec2_instance.tags
 }

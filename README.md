@@ -5,22 +5,55 @@ This repository contains the Infrastructure as Code (IaC) for the Hoopla project
 ## Project Structure
 
 ```
-mwt-hoopla-nonprod/
-├── common/                # Common infrastructure code shared across all environments
-│   └── Terraform/         # Common Terraform configurations
-│       ├── main.tf        # Main infrastructure definitions
-│       ├── variables.tf   # Variable declarations
-│       ├── outputs.tf     # Output definitions
-│       └── ...
-├── dev/                   # Development environment specific configurations
-│   └── Terraform/
-│       ├── terraform.tfvars    # Development environment variables
-│       └── terraform.tfbackend # Backend configuration for dev
-└── staging/              # Staging environment specific configurations (can be created at any time)
-    └── Terraform/
-        ├── terraform.tfvars    # Staging environment variables
-        └── terraform.tfbackend # Backend configuration for staging
+infrastructure/               # Root organization infrastructure directory
+├── modules/                  # Central repository for all organization's Terraform modules
+│   └── route53_subdomain  # Cutom module
+│
+└── mwt-hoopla-nonprod/      # Hoopla project infrastructure (this repository)
+    ├── common/              # Common infrastructure code shared across all environments
+    │   └── Terraform/       # Common Terraform configurations
+    │       ├── main.tf      # Main infrastructure definitions
+    │       ├── variables.tf # Variable declarations
+    │       ├── outputs.tf   # Output definitions
+    │       └── ...
+    ├── dev/                 # Development environment specific configurations
+    │   └── Terraform/
+    │       ├── terraform.tfvars    # Development environment variables
+    │       └── terraform.tfbackend # Backend configuration for dev
+    └── staging/            # Staging environment specific configurations
+        └── Terraform/
+            ├── terraform.tfvars    # Staging environment variables
+            └── terraform.tfbackend # Backend configuration for staging
 
+```
+
+## Custom Modules
+
+The `modules` repository is our organization's central collection of **custom-built Terraform modules**. This is a separate repository at the same level as project-specific repositories like mwt-hoopla-nonprod. These modules are designed to be used across all infrastructure projects in our organization.
+
+### Purpose of Custom Modules
+- Provide standardized infrastructure patterns across all organization projects
+- Implement company-wide security and compliance requirements
+- Create a single source of truth for common infrastructure components
+- Enable consistent infrastructure deployment across different teams and projects
+- Reduce duplication of effort across teams
+- Ensure best practices are followed across the organization
+
+### Using Custom Modules
+- Modules are maintained in their own repository (`modules`) separate from project repositories
+- Projects reference these modules using Git source or registry references
+- Each module follows strict versioning to ensure stability across projects
+- Changes to modules go through thorough review process as they affect multiple projects
+- Teams can request new features or modifications through the central module repository
+- Documentation and usage examples are maintained centrally
+
+Example of module usage in a project:
+```hcl
+module "vpc" {
+  source = "local_path_to_the_module"
+  
+  # Module configuration...
+}
 ```
 
 ## Architecture Overview
@@ -119,6 +152,10 @@ terraform plan -var-file="../../dev/Terraform/terraform.tfvars"
 5. Apply the changes (in this case its dev):
 ```bash
 terraform apply -var-file="../../dev/Terraform/terraform.tfvars"
+```
+6. To destroy the changes (in this case its dev):
+```bash
+terraform destroy -var-file="../../dev/Terraform/terraform.tfvars"
 ```
 
 ## Important Notes

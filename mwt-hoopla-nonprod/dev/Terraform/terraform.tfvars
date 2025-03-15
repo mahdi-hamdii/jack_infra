@@ -294,3 +294,28 @@ route53_resolver_endpoint = {
   protocols              = ["Do53", "DoH"]
   # ip_addresses           = ["10.110.10.0/23", "10.110.12.0/23", "10.110.14.0/23"] #if not specified use the VPC private subnets
 }
+
+############################################################
+# EC2 Instance
+############################################################
+
+ec2_instance = {
+  instance_type               = "t3.micro"
+  ami                         = "ami-0e731c8a588258d0d" # Amazon Linux 2023 AMI in us-east-1
+  associate_public_ip_address = false
+  security_group_keyname      = "datacenter_rdp" # Using existing security group that allows RDP access
+  enable_volume_tags          = true
+  root_block_device = [
+    {
+      encrypted   = true
+      volume_type = "gp3"
+      volume_size = 20
+    }
+  ]
+  tags = {
+    Name        = "hoopla-dev-instance"
+    Environment = "dev"
+    Terraform   = "true"
+    Department  = "infrastructure"
+  }
+}
