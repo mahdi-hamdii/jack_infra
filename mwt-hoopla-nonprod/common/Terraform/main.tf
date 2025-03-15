@@ -106,8 +106,8 @@ module "route53_subdomain" {
   for_each = { for subdomain in var.route53_subdomain : subdomain.domain => subdomain }
 
   providers = {
-    aws.nonprod_account = aws.nonprod_account
-    aws.prod_account    = aws.prod_account
+    aws.nonprod_account = aws
+    aws.prod_account    = aws.mwt-hoopla-prod
   }
 
   domain                     = each.value.domain
