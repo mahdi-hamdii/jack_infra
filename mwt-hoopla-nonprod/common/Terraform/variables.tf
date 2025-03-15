@@ -17,6 +17,21 @@ variable "region" {
   description = "Region"
 }
 
+variable "department" {
+  type        = string
+  description = "Department"
+}
+
+variable "owner" {
+  type        = string
+  description = "Owner"
+}
+
+variable "application" {
+  type        = string
+  description = "Application"
+}
+
 ############################################################
 # VPC
 ############################################################

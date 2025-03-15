@@ -4,6 +4,9 @@
 
 businessunit = "hoopla"
 environment  = "dev"
+department   = "infrastructure"
+owner        = "jmezinko"
+application  = "network"
 region       = "us-east-1"
 
 ############################################################
