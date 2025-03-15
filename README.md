@@ -16,14 +16,11 @@ mwt-hoopla-nonprod/
 │   └── Terraform/
 │       ├── terraform.tfvars    # Development environment variables
 │       └── terraform.tfbackend # Backend configuration for dev
-├── staging/              # Staging environment specific configurations
-│   └── Terraform/
-│       ├── terraform.tfvars    # Staging environment variables
-│       └── terraform.tfbackend # Backend configuration for staging
-└── prod/                # Production environment specific configurations
+└── staging/              # Staging environment specific configurations (can be created at any time)
     └── Terraform/
-        ├── terraform.tfvars    # Production environment variables
-        └── terraform.tfbackend # Backend configuration for prod
+        ├── terraform.tfvars    # Staging environment variables
+        └── terraform.tfbackend # Backend configuration for staging
+
 ```
 
 ## Architecture Overview
@@ -43,9 +40,32 @@ mwt-hoopla-nonprod/
   1. `terraform.tfvars`: Contains environment-specific values
      ```hcl
      # Example terraform.tfvars
-     environment     = "dev"
-     instance_type  = "t3.micro"
-     vpc_cidr       = "10.0.0.0/16"
+     businessunit = "hoopla"
+     environment  = "dev"
+     region       = "us-east-1"
+     department   = "infrastructure"
+     owner        = "jmezinko"
+     application  = "network"
+
+     vpc = {
+       cidr = "10.110.0.0/16"
+       azs  = ["us-east-1a", "us-east-1b", "us-east-1c"]
+       public_subnets = {
+         public_1a = "10.110.110.0/23"
+         public_1b = "10.110.112.0/23"
+         public_1c = "10.110.114.0/23"
+       }
+       private_subnets = {
+         private_1a = "10.110.10.0/23"
+         private_1b = "10.110.12.0/23"
+         private_1c = "10.110.14.0/23"
+       }
+       enable_nat_gateway     = true
+       single_nat_gateway     = true
+       one_nat_gateway_per_az = true
+       enable_dns_hostnames   = true
+       enable_dns_support     = true
+     }
      ```
   2. `terraform.tfbackend`: Specifies the backend configuration
      ```hcl
@@ -109,5 +129,122 @@ terraform apply -var-file="../../dev/Terraform/terraform.tfvars"
 - Regular backups of state files are recommended
 - Follow the principle of least privilege when setting up AWS credentials
 
+## Create new environment (staging for example)
 
+To create a new environment, follow these steps:
+
+1. Copy the existing environment folder (in this case, copy `dev` to create `staging`):
+```bash
+cd mwt-hoopla-nonprod
+cp -r dev staging
+```
+
+2. Update the `terraform.tfvars` file in the new environment:
+```bash
+vim staging/Terraform/terraform.tfvars
+```
+
+Change the environment-specific values, for example:
+```hcl
+# Before (in dev/Terraform/terraform.tfvars)
+businessunit = "hoopla"
+environment  = "dev"
+region       = "us-east-1"
+department   = "infrastructure"
+owner        = "jmezinko"
+application  = "network"
+
+vpc = {
+  cidr = "10.110.0.0/16"
+  azs  = ["us-east-1a", "us-east-1b", "us-east-1c"]
+  public_subnets = {
+    public_1a = "10.110.110.0/23"
+    public_1b = "10.110.112.0/23"
+    public_1c = "10.110.114.0/23"
+  }
+  private_subnets = {
+    private_1a = "10.110.10.0/23"
+    private_1b = "10.110.12.0/23"
+    private_1c = "10.110.14.0/23"
+  }
+  enable_nat_gateway     = true
+  single_nat_gateway     = true
+  one_nat_gateway_per_az = true
+  enable_dns_hostnames   = true
+  enable_dns_support     = true
+}
+
+# After (in staging/Terraform/terraform.tfvars)
+businessunit = "hoopla"
+environment  = "staging"
+region       = "us-east-1"
+department   = "infrastructure"
+owner        = "jmezinko"
+application  = "network"
+
+vpc = {
+  cidr = "10.120.0.0/16"
+  azs  = ["us-east-1a", "us-east-1b", "us-east-1c"]
+  public_subnets = {
+    public_1a = "10.120.110.0/23"
+    public_1b = "10.120.112.0/23"
+    public_1c = "10.120.114.0/23"
+  }
+  private_subnets = {
+    private_1a = "10.120.10.0/23"
+    private_1b = "10.120.12.0/23"
+    private_1c = "10.120.14.0/23"
+  }
+  enable_nat_gateway     = true
+  single_nat_gateway     = true
+  one_nat_gateway_per_az = true
+  enable_dns_hostnames   = true
+  enable_dns_support     = true
+}
+```
+
+3. Update the `terraform.tfbackend` file:
+```bash
+vim staging/Terraform/terraform.tfbackend
+```
+
+Change the backend configuration:
+```hcl
+# Before (in dev/Terraform/terraform.tfbackend)
+bucket = "my-terraform-state-dev"
+key    = "terraform.tfstate"
+region = "us-east-1"
+
+# After (in staging/Terraform/terraform.tfbackend)
+bucket = "my-terraform-state-staging"  # Different bucket for staging state
+key    = "terraform.tfstate"
+region = "us-east-1"
+```
+
+4. Create the new state bucket in AWS (if it doesn't exist):
+```bash
+aws s3 mb s3://my-terraform-state-staging --region us-east-1
+```
+
+5. Deploy the new environment:
+```bash
+# Navigate to common Terraform directory
+cd mwt-hoopla-nonprod/common/Terraform
+
+# Initialize with staging backend
+terraform init -backend-config="../../staging/Terraform/terraform.tfbackend"
+
+# Plan with staging variables
+terraform plan -var-file="../../staging/Terraform/terraform.tfvars"
+
+# Apply the changes
+terraform apply -var-file="../../staging/Terraform/terraform.tfvars"
+```
+
+Important Notes for New Environments:
+- Ensure unique values for environment-specific resources (VPC CIDRs, bucket names, etc.)
+- Verify AWS credentials have necessary permissions in the new environment
+- Consider different resource sizes/counts based on environment needs
+- Update any environment-specific tags or naming conventions
+- Document the new environment in your team's documentation
 
