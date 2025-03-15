@@ -92,7 +92,7 @@ module "security_groups" {
     }
   ]
 
-  # TODO - VERIFY IF THERE IS ANY MISSING CONFIGURATION HERE
+  tags = lookup(each.value, "tags", {})
 }
 
 

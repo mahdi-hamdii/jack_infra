@@ -78,26 +78,20 @@ vpc_endpoints = {
 
 
 security_groups = {
-  name = {
-    rules = {
-      rule1 = {
-        from_port   = 443
-        to_port     = 443
+  datacenter_rdp = {
+    rules = [
+      {
+        from_port   = 3389
+        to_port     = 3389
         protocol    = "tcp"
-        cidr_blocks = "10.110.0.0/16"
+        cidr_blocks = "10.223.0.0/16"
       }
-      rule2 = {
-        from_port   = 80
-        to_port     = 80
-        protocol    = "tcp"
-        cidr_blocks = "10.110.0.0/16"
-      }
-      rule3 = {
-        from_port   = 22
-        to_port     = 22
-        protocol    = "tcp"
-        cidr_blocks = "10.110.0.0/16"
-      }
+    ]
+    tags = {
+      application = "security"
     }
   }
+
+  # TODO - add more security groups
+
 }

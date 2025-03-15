@@ -48,8 +48,8 @@ variable "vpc_endpoints" {
 # Security Groups
 ############################################################
 
-
 variable "security_groups" {
   type        = any
   description = "Security Groups Configuration"
 }
+
