@@ -92,6 +92,163 @@ security_groups = {
     }
   }
 
-  # TODO - add more security groups
+  confluent_cloud_vpn = {
+    rules = [
+      {
+        from_port   = 9092
+        to_port     = 9092
+        protocol    = "tcp"
+        cidr_blocks = "100.64.0.0/16"
+      },
+      {
+        from_port   = 443
+        to_port     = 443
+        protocol    = "tcp"
+        cidr_blocks = "100.64.0.0/16"
+      }
+    ]
+    tags = {
+      application = "security"
+    }
+  }
 
+  db_comm_postgresql_internal = {
+    rules = [
+      {
+        from_port   = 5432
+        to_port     = 5432
+        protocol    = "tcp"
+        cidr_blocks = "10.11.0.0/16"
+      }
+    ]
+    tags = {
+      application = "security"
+    }
+  }
+
+  dms_peer_internal = {
+    rules = [
+      {
+        from_port   = 1521
+        to_port     = 1521
+        protocol    = "tcp"
+        cidr_blocks = "10.11.0.0/16"
+      }
+    ]
+    tags = {
+      application = "security"
+    }
+  }
+
+  db_comm_oracle_ecom = {
+    rules = [
+      {
+        from_port   = 5432
+        to_port     = 5432
+        protocol    = "tcp"
+        cidr_blocks = "10.11.0.0/16"
+      }
+    ]
+    tags = {
+      application = "security"
+    }
+  }
+
+  redis = {
+    rules = [
+      {
+        from_port   = 6379
+        to_port     = 6379
+        protocol    = "tcp"
+        cidr_blocks = "10.223.0.0/16"
+      }
+    ]
+    tags = {
+      application = "security"
+    }
+  }
+
+  redis_connect_dev_test_staging = {
+    rules = [
+      {
+        from_port   = 6379
+        to_port     = 6379
+        protocol    = "tcp"
+        cidr_blocks = "10.0.130.0/23"
+      },
+      {
+        from_port   = 6379
+        to_port     = 6379
+        protocol    = "tcp"
+        cidr_blocks = "10.0.132.0/23"
+      }
+    ]
+    tags = {
+      application = "security"
+    }
+  }
+
+  eks_connect = {
+    rules = [
+      {
+        from_port   = 6379
+        to_port     = 6379
+        protocol    = "tcp"
+        cidr_blocks = "10.0.130.0/23"
+      },
+      {
+        from_port   = 5432
+        to_port     = 5432
+        protocol    = "tcp"
+        cidr_blocks = "10.0.130.0/23"
+      },
+      {
+        from_port   = 443
+        to_port     = 443
+        protocol    = "tcp"
+        cidr_blocks = "10.0.130.0/23"
+      },
+      {
+        from_port   = 6379
+        to_port     = 6379
+        protocol    = "tcp"
+        cidr_blocks = "10.0.132.0/23"
+      },
+      {
+        from_port   = 5432
+        to_port     = 5432
+        protocol    = "tcp"
+        cidr_blocks = "10.0.132.0/23"
+      },
+      {
+        from_port   = 443
+        to_port     = 443
+        protocol    = "tcp"
+        cidr_blocks = "10.0.132.0/23"
+      }
+    ]
+    tags = {
+      application = "security"
+    }
+  }
+
+  route53_rslvr_in = {
+    rules = [
+      {
+        from_port   = 53
+        to_port     = 53
+        protocol    = "tcp"
+        cidr_blocks = "10.223.2.0/24"
+      },
+      {
+        from_port   = 53
+        to_port     = 53
+        protocol    = "udp"
+        cidr_blocks = "10.223.2.0/24"
+      }
+    ]
+    tags = {
+      application = "security"
+    }
+  }
 }
