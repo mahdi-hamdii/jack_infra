@@ -4,10 +4,10 @@
 
 businessunit = "hoopla"
 environment  = "dev"
+region       = "us-east-1"
 department   = "infrastructure"
 owner        = "jmezinko"
 application  = "network"
-region       = "us-east-1"
 
 ############################################################
 # VPC
