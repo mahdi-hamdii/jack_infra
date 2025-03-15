@@ -17,8 +17,6 @@ variable "region" {
   description = "Region"
 }
 
-
-
 ############################################################
 # VPC
 ############################################################
@@ -44,4 +42,14 @@ variable "transit_gateway" {
 variable "vpc_endpoints" {
   type        = any
   description = "VPC Endpoints Configuration"
+}
+
+############################################################
+# Security Groups
+############################################################
+
+
+variable "security_groups" {
+  type        = any
+  description = "Security Groups Configuration"
 }

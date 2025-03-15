@@ -1,9 +1,4 @@
 ############################################################
-# Global
-############################################################
-
-
-############################################################
 # VPC
 ############################################################
 
@@ -22,7 +17,9 @@ module "vpc" {
   private_subnet_names = keys(var.vpc.private_subnets)
   private_subnets      = values(var.vpc.private_subnets)
 
-  # TODO - VERIFY IF THERE IS ANY MISSING CONFIGURATION HERE
+  enable_nat_gateway     = var.vpc.enable_nat_gateway
+  single_nat_gateway     = var.vpc.single_nat_gateway
+  one_nat_gateway_per_az = var.vpc.one_nat_gateway_per_az
 
   enable_dns_hostnames = var.vpc.enable_dns_hostnames
   enable_dns_support   = var.vpc.enable_dns_support

@@ -1,5 +1,5 @@
 ############################################################
-# Global
+# Global Variables
 ############################################################
 
 businessunit = "hoopla"
@@ -24,6 +24,10 @@ vpc = {
     private_1b = "10.110.12.0/23"
     private_1c = "10.110.14.0/23"
   }
+
+  enable_nat_gateway     = true
+  single_nat_gateway     = true
+  one_nat_gateway_per_az = true
 
   enable_dns_hostnames = true
   enable_dns_support   = true
@@ -66,4 +70,34 @@ vpc_endpoints = {
     }
   }
 
+}
+
+############################################################
+# Security Groups
+############################################################
+
+
+security_groups = {
+  name = {
+    rules = {
+      rule1 = {
+        from_port   = 443
+        to_port     = 443
+        protocol    = "tcp"
+        cidr_blocks = "10.110.0.0/16"
+      }
+      rule2 = {
+        from_port   = 80
+        to_port     = 80
+        protocol    = "tcp"
+        cidr_blocks = "10.110.0.0/16"
+      }
+      rule3 = {
+        from_port   = 22
+        to_port     = 22
+        protocol    = "tcp"
+        cidr_blocks = "10.110.0.0/16"
+      }
+    }
+  }
 }
