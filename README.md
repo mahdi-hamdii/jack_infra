@@ -2,6 +2,8 @@
 
 This repository contains the Infrastructure as Code (IaC) for the Hoopla project using Terraform. The infrastructure is organized to support multiple environments while maintaining a single source of truth for common configurations.
 
+![Architecture Diagram](./arch_diagram.png)
+
 ## Project Structure
 
 ```
@@ -32,6 +34,7 @@ infrastructure/               # Root organization infrastructure directory
 The `modules` repository is our organization's central collection of **custom-built Terraform modules**. This is a separate repository at the same level as project-specific repositories like mwt-hoopla-nonprod. These modules are designed to be used across all infrastructure projects in our organization.
 
 ### Purpose of Custom Modules
+
 - Provide standardized infrastructure patterns across all organization projects
 - Implement company-wide security and compliance requirements
 - Create a single source of truth for common infrastructure components
@@ -40,6 +43,7 @@ The `modules` repository is our organization's central collection of **custom-bu
 - Ensure best practices are followed across the organization
 
 ### Using Custom Modules
+
 - Modules are maintained in their own repository (`modules`) separate from project repositories
 - Projects reference these modules using Git source or registry references
 - Each module follows strict versioning to ensure stability across projects
@@ -48,10 +52,11 @@ The `modules` repository is our organization's central collection of **custom-bu
 - Documentation and usage examples are maintained centrally
 
 Example of module usage in a project:
+
 ```hcl
 module "vpc" {
   source = "local_path_to_the_module"
-  
+
   # Module configuration...
 }
 ```
@@ -59,6 +64,7 @@ module "vpc" {
 ## Architecture Overview
 
 ### Common Code (`common/` directory)
+
 - Contains all the shared infrastructure code that is environment-agnostic
 - Includes the core Terraform configurations, modules, and resources
 - Should only be modified when:
@@ -68,9 +74,12 @@ module "vpc" {
   - Adding new features
 
 ### Environment-Specific Code (`dev/`, `staging/`, `prod/` directories)
+
 - Contains environment-specific configurations
 - Only two files should be modified per environment:
+
   1. `terraform.tfvars`: Contains environment-specific values
+
      ```hcl
      # Example terraform.tfvars
      businessunit = "hoopla"
@@ -100,6 +109,7 @@ module "vpc" {
        enable_dns_support     = true
      }
      ```
+
   2. `terraform.tfbackend`: Specifies the backend configuration
      ```hcl
      # Example terraform.tfbackend
@@ -111,28 +121,32 @@ module "vpc" {
 ## Best Practices
 
 1. **Code Reusability**
+
    - Common infrastructure code is maintained in the `common/` directory
    - Environment-specific values are defined in `terraform.tfvars`
    - Never hardcode environment-specific values in common code
 
 2. **Change Management**
+
    - Only modify files in the `common/` directory when changing functionality
    - Environment-specific changes should only involve modifying `terraform.tfvars` and `terraform.tfbackend`
    - All changes should go through code review
 
 3. **State Management**
    - Each environment has its own state file
-   - State files are stored in S3 
+   - State files are stored in S3
    - Backend configurations are environment-specific
 
 ## How to Deploy Infrastructure
 
 1. Navigate to the common Terraform folder:
+
 ```bash
 cd mwt-hoopla-nonprod/common/Terraform
 ```
 
 2. Export AWS credentials:
+
 ```bash
 export AWS_ACCESS_KEY_ID="your-access-key"
 export AWS_SECRET_ACCESS_KEY="your-secret-key"
@@ -140,20 +154,25 @@ export AWS_REGION="us-east-1"
 ```
 
 3. Initialize Terraform with environment-specific backend (in this case its dev):
+
 ```bash
 terraform init -backend-config="../../dev/Terraform/terraform.tfbackend"
 ```
 
 4. Plan the changes (in this case its dev):
+
 ```bash
 terraform plan -var-file="../../dev/Terraform/terraform.tfvars"
 ```
 
 5. Apply the changes (in this case its dev):
+
 ```bash
 terraform apply -var-file="../../dev/Terraform/terraform.tfvars"
 ```
+
 6. To destroy the changes (in this case its dev):
+
 ```bash
 terraform destroy -var-file="../../dev/Terraform/terraform.tfvars"
 ```
@@ -171,17 +190,20 @@ terraform destroy -var-file="../../dev/Terraform/terraform.tfvars"
 To create a new environment, follow these steps:
 
 1. Copy the existing environment folder (in this case, copy `dev` to create `staging`):
+
 ```bash
 cd mwt-hoopla-nonprod
 cp -r dev staging
 ```
 
 2. Update the `terraform.tfvars` file in the new environment:
+
 ```bash
 vim staging/Terraform/terraform.tfvars
 ```
 
 Change the environment-specific values, for example:
+
 ```hcl
 # Before (in dev/Terraform/terraform.tfvars)
 businessunit = "hoopla"
@@ -241,11 +263,13 @@ vpc = {
 ```
 
 3. Update the `terraform.tfbackend` file:
+
 ```bash
 vim staging/Terraform/terraform.tfbackend
 ```
 
 Change the backend configuration:
+
 ```hcl
 # Before (in dev/Terraform/terraform.tfbackend)
 bucket = "my-terraform-state-dev"
@@ -259,11 +283,13 @@ region = "us-east-1"
 ```
 
 4. Create the new state bucket in AWS (if it doesn't exist):
+
 ```bash
 aws s3 mb s3://my-terraform-state-staging --region us-east-1
 ```
 
 5. Deploy the new environment:
+
 ```bash
 # Navigate to common Terraform directory
 cd mwt-hoopla-nonprod/common/Terraform
@@ -279,9 +305,9 @@ terraform apply -var-file="../../staging/Terraform/terraform.tfvars"
 ```
 
 Important Notes for New Environments:
+
 - Ensure unique values for environment-specific resources (VPC CIDRs, bucket names, etc.)
 - Verify AWS credentials have necessary permissions in the new environment
 - Consider different resource sizes/counts based on environment needs
 - Update any environment-specific tags or naming conventions
 - Document the new environment in your team's documentation
-
