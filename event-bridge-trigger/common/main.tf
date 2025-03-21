@@ -1,12 +1,4 @@
 ############################################################
-# Key Rotation State Machine
-############################################################
-
-data "aws_sfn_state_machine" "key_rotation_state_machine" {
-  name = var.target_state_machine_name
-}
-
-############################################################
 # IAM
 ############################################################
 
@@ -36,7 +28,7 @@ resource "aws_iam_policy" "eventbridge_scheduler_policy" {
     Statement = [{
       Effect   = "Allow"
       Action   = "states:StartExecution"
-      Resource = data.aws_sfn_state_machine.key_rotation_state_machine.arn
+      Resource = var.target_state_machine_arn
     }]
   })
 }
@@ -64,7 +56,7 @@ resource "aws_scheduler_schedule" "key_rotation_scheduler" {
   start_date          = lookup(each.value, "start_date", null)
 
   target {
-    arn      = data.aws_sfn_state_machine.key_rotation_state_machine.arn
+    arn      = var.target_state_machine_arn
     role_arn = aws_iam_role.eventbridge_scheduler_role.arn
 
     input = jsonencode(each.value.target_state_machine_input)

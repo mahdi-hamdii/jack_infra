@@ -30,9 +30,9 @@ variable "application" {
 # Key Rotation State Machine
 ############################################################
 
-variable "target_state_machine_name" {
+variable "target_state_machine_arn" {
   type        = string
-  description = "Name of the target state machine to be triggered"
+  description = "arn of the target state machine to be triggered"
 }
 
 ############################################################
