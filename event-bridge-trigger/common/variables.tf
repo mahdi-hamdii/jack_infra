@@ -31,12 +31,12 @@ variable "application" {
 ############################################################
 
 variable "target_state_machine_name" {
-  type = string
+  type        = string
   description = "Name of the target state machine to be triggered"
 }
 
 variable "target_state_machine_input" {
-  type = any
+  type        = any
   description = "State Machine JSON input"
 }
 ############################################################
@@ -44,29 +44,40 @@ variable "target_state_machine_input" {
 ############################################################
 
 variable "eventbridge_scheduler_role_name" {
-  type = string
+  type        = string
   description = "Name of the event bridge scheduler role"
 }
 
 variable "eventbridge_scheduler_policy_name" {
-  type = string
+  type        = string
   description = "Name of the event bridge scheduler policy"
 }
 
 variable "eventbridge_scheduler_policy_description" {
-  type = string
+  type        = string
   description = "Description of the event bridge scheduler policy"
 }
 ############################################################
 # EventBridge Scheduler
 ############################################################
 
+# variable "event_bridge_schedulers" {
+#   type        = any
+#   description = "Event bridge schedulers configuraiton"
+# }
+
 variable "event_bridge_scheduler_name" {
-  type = string
+  type        = string
   description = "Name of the event bridge scheduler"
 }
 
 variable "schedule_expression" {
-  type = string
+  type        = string
   description = "Schedule expression of the event bridge scheduler"
+}
+
+variable "start_date" {
+  type        = string
+  description = "Start date of the event bridge scheduler"
+  default     = ""
 }

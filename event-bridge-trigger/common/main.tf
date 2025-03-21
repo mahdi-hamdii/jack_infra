@@ -34,8 +34,8 @@ resource "aws_iam_policy" "eventbridge_scheduler_policy" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Effect = "Allow"
-      Action = "states:StartExecution"
+      Effect   = "Allow"
+      Action   = "states:StartExecution"
       Resource = data.aws_sfn_state_machine.key_rotation_state_machine.arn
     }]
   })
@@ -60,6 +60,7 @@ resource "aws_scheduler_schedule" "key_rotation_scheduler" {
   }
 
   schedule_expression = var.schedule_expression
+  start_date          = var.start_date != "" ? var.start_date : null
 
   target {
     arn      = data.aws_sfn_state_machine.key_rotation_state_machine.arn
