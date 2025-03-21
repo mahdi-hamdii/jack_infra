@@ -53,19 +53,20 @@ resource "aws_iam_role_policy_attachment" "eventbridge_scheduler_policy_attach" 
 ############################################################
 
 resource "aws_scheduler_schedule" "key_rotation_scheduler" {
-  name = var.event_bridge_scheduler_name
+  for_each = var.event_bridge_schedulers
+  name     = each.value.event_bridge_scheduler_name
 
   flexible_time_window {
     mode = "OFF"
   }
 
-  schedule_expression = var.schedule_expression
-  start_date          = var.start_date != "" ? var.start_date : null
+  schedule_expression = each.value.schedule_expression
+  start_date          = lookup(each.value, "start_date", null)
 
   target {
     arn      = data.aws_sfn_state_machine.key_rotation_state_machine.arn
     role_arn = aws_iam_role.eventbridge_scheduler_role.arn
 
-    input = jsonencode(var.target_state_machine_input)
+    input = jsonencode(each.value.target_state_machine_input)
   }
 }

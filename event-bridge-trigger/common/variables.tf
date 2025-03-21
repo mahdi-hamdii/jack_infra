@@ -35,10 +35,6 @@ variable "target_state_machine_name" {
   description = "Name of the target state machine to be triggered"
 }
 
-variable "target_state_machine_input" {
-  type        = any
-  description = "State Machine JSON input"
-}
 ############################################################
 # IAM
 ############################################################
@@ -61,23 +57,14 @@ variable "eventbridge_scheduler_policy_description" {
 # EventBridge Scheduler
 ############################################################
 
-# variable "event_bridge_schedulers" {
-#   type        = any
-#   description = "Event bridge schedulers configuraiton"
-# }
-
-variable "event_bridge_scheduler_name" {
-  type        = string
-  description = "Name of the event bridge scheduler"
+variable "event_bridge_schedulers" {
+  type = map(object({
+    event_bridge_scheduler_name = string
+    schedule_expression         = string
+    start_date                  = optional(string, "")
+    target_state_machine_input  = any
+  }))
+  description = "Map of event bridge schedulers configuration"
 }
 
-variable "schedule_expression" {
-  type        = string
-  description = "Schedule expression of the event bridge scheduler"
-}
 
-variable "start_date" {
-  type        = string
-  description = "Start date of the event bridge scheduler"
-  default     = ""
-}
