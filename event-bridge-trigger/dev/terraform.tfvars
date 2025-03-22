@@ -11,7 +11,7 @@ application  = "event-bridge"
 ############################################################
 # Key Rotation State Machine
 ############################################################
-target_state_machine_arn = "arn:aws:states:eu-west-3:123456789012:stateMachine:HelloWorldStateMachine"
+target_state_machine_arn = "arn:aws:states:eu-west-3:437781412181:stateMachine:HelloWorldStateMachine"
 
 ############################################################
 # IAM

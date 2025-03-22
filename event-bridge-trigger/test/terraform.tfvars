@@ -12,7 +12,7 @@ application  = "event-bridge"
 # Key Rotation State Machine
 ############################################################
 # just update the arn to the test state machine
-target_state_machine_arn = "arn:aws:states:eu-west-3:123456789012:stateMachine:HelloWorldStateMachine"
+target_state_machine_arn = "arn:aws:states:eu-west-3:437781412181:stateMachine:HelloWorldStateMachine"
 
 ############################################################
 # IAM
