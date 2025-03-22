@@ -1,0 +1,3 @@
+bucket = "jack-infra"
+key    = "event-bridge/test/terraform.tfstate"
+region = "eu-west-3"

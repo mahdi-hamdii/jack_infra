@@ -61,7 +61,7 @@ variable "event_bridge_schedulers" {
   type = map(object({
     event_bridge_scheduler_name = string
     schedule_expression         = string
-    start_date                  = optional(string, "")
+    start_date                  = optional(any, null)
     target_state_machine_input  = any
   }))
   description = "Map of event bridge schedulers configuration"
