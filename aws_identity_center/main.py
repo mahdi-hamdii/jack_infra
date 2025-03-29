@@ -50,26 +50,49 @@ def get_permission_set_policies(instance_arn, permission_set_arn):
     return managed_policies, inline_policy
 
 def list_permission_set_assignments(instance_arn, permission_set_arn):
-    """List users and groups assigned to a permission set"""
+    """List users and groups assigned to a permission set across all accounts"""
     client = boto3.client('sso-admin')
     assignments = []
-    next_token = None
 
+    # First, list all accounts where the permission set is provisioned
+    account_ids = []
+    next_token = None
     while True:
-        response = client.list_account_assignments(
+        response = client.list_accounts_for_provisioned_permission_set(
             InstanceArn=instance_arn,
             PermissionSetArn=permission_set_arn,
             NextToken=next_token
-        ) if next_token else client.list_account_assignments(
+        ) if next_token else client.list_accounts_for_provisioned_permission_set(
             InstanceArn=instance_arn,
             PermissionSetArn=permission_set_arn
         )
 
-        assignments.extend(response.get('AccountAssignments', []))
+        account_ids.extend(response.get('AccountIds', []))
         next_token = response.get('NextToken')
 
         if not next_token:
             break
+
+    # Then list account assignments per account
+    for account_id in account_ids:
+        next_token = None
+        while True:
+            response = client.list_account_assignments(
+                InstanceArn=instance_arn,
+                PermissionSetArn=permission_set_arn,
+                AccountId=account_id,
+                NextToken=next_token
+            ) if next_token else client.list_account_assignments(
+                InstanceArn=instance_arn,
+                PermissionSetArn=permission_set_arn,
+                AccountId=account_id
+            )
+
+            assignments.extend(response.get('AccountAssignments', []))
+            next_token = response.get('NextToken')
+
+            if not next_token:
+                break
 
     return assignments
 
@@ -89,7 +112,8 @@ def main():
             arn = policy.get('Arn', '').lower()
             if ('iamfullaccess' in name or 'iamfullaccess' in arn or
                 'secretsmanagerreadwrite' in name or 'secretsmanagerreadwrite' in arn or
-                'secretsmanagerfullaccess' in name or 'secretsmanagerfullaccess' in arn):
+                'secretsmanagerfullaccess' in name or 'secretsmanagerfullaccess' in arn or
+                'administratoraccess' in name or 'administratoraccess' in arn):
                 matched = True
                 break
 
