@@ -1,6 +1,7 @@
 import boto3
 import sys
 import ast
+import csv
 
 def list_permission_sets(instance_arn):
     """List all permission sets in the AWS IAM Identity Center"""
@@ -131,6 +132,7 @@ def list_permission_set_assignments(instance_arn, permission_set_arn):
             for assignment in response.get('AccountAssignments', []):
                 principal_name = get_principal_name(identity_store_id, assignment['PrincipalId'], assignment['PrincipalType'])
                 assignment['PrincipalName'] = principal_name
+                assignment['AccountId'] = account_id
                 assignments.append(assignment)
 
             next_token = response.get('NextToken')
@@ -139,10 +141,11 @@ def list_permission_set_assignments(instance_arn, permission_set_arn):
 
     return assignments
 
-def write_to_file(filename, content_lines):
-    with open(filename, 'a') as f:
-        for line in content_lines:
-            f.write(line + '\n')
+def write_to_csv(filename, rows):
+    with open(filename, 'w', newline='') as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=rows[0].keys())
+        writer.writeheader()
+        writer.writerows(rows)
 
 def main():
     # Replace with your AWS IAM Identity Center Instance ARN
@@ -163,6 +166,8 @@ def main():
 
     permission_sets = list_permission_sets(instance_arn)
     print("Filtered Permission Sets (matching input policies):")
+    results_by_policy = {policy: [] for policy in input_policies}
+
     for ps in permission_sets:
         managed_policies, inline_policy = get_permission_set_policies(instance_arn, ps)
 
@@ -178,24 +183,21 @@ def main():
             ps_name = get_permission_set_name(instance_arn, ps)
             assignments = list_permission_set_assignments(instance_arn, ps)
 
-            details = [
-                f"Permission Set: {ps_name} ({ps})",
-                "Managed Policies:",
-            ]
-            details += [f"  - {policy['Name']} ({policy['Arn']})" for policy in managed_policies]
+            for assignment in assignments:
+                for matched_policy in matched_policy_names:
+                    results_by_policy[matched_policy].append({
+                        'PermissionSetName': ps_name,
+                        'PermissionSetArn': ps,
+                        'ManagedPolicies': ", ".join([p['Name'] for p in managed_policies]),
+                        'InlinePolicy': inline_policy if inline_policy else "None",
+                        'PrincipalType': assignment['PrincipalType'],
+                        'PrincipalName': assignment['PrincipalName'],
+                        'AccountId': assignment['AccountId']
+                    })
 
-            details.append("Inline Policy:")
-            details.append(inline_policy if inline_policy else "  None")
-
-            details.append("Assignments:")
-            if assignments:
-                details += [f"  - {a['PrincipalType']}: {a['PrincipalName']} (Account: {a['AccountId']})" for a in assignments]
-            else:
-                details.append("  None")
-
-            for policy_name in matched_policy_names:
-                filename = f"{policy_name}.txt"
-                write_to_file(filename, details)
+    for policy, rows in results_by_policy.items():
+        if rows:
+            write_to_csv(f"{policy}.csv", rows)
 
 if __name__ == "__main__":
     main()
