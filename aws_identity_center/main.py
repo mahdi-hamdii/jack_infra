@@ -139,6 +139,11 @@ def list_permission_set_assignments(instance_arn, permission_set_arn):
 
     return assignments
 
+def write_to_file(filename, content_lines):
+    with open(filename, 'a') as f:
+        for line in content_lines:
+            f.write(line + '\n')
+
 def main():
     # Replace with your AWS IAM Identity Center Instance ARN
     instance_arn = "arn:aws:sso:::instance/ssoins-xxxxxxxxxxxx"
@@ -161,35 +166,36 @@ def main():
     for ps in permission_sets:
         managed_policies, inline_policy = get_permission_set_policies(instance_arn, ps)
 
-        matched = False
+        matched_policy_names = []
         for policy in managed_policies:
             name = policy.get('Name', '').lower()
             arn = policy.get('Arn', '').lower()
-            if any(p in name or p in arn for p in input_policies):
-                matched = True
-                break
+            for input_policy in input_policies:
+                if input_policy in name or input_policy in arn:
+                    matched_policy_names.append(input_policy)
 
-        if matched:
+        if matched_policy_names:
             ps_name = get_permission_set_name(instance_arn, ps)
-            print(f"\nPermission Set: {ps_name} ({ps})")
-            print("Managed Policies:")
-            for policy in managed_policies:
-                print(f"  - {policy['Name']} ({policy['Arn']})")
-
-            print("Inline Policy:")
-            if inline_policy:
-                print(inline_policy)
-            else:
-                print("  None")
-
-            # Show assignments
-            print("Assignments:")
             assignments = list_permission_set_assignments(instance_arn, ps)
+
+            details = [
+                f"Permission Set: {ps_name} ({ps})",
+                "Managed Policies:",
+            ]
+            details += [f"  - {policy['Name']} ({policy['Arn']})" for policy in managed_policies]
+
+            details.append("Inline Policy:")
+            details.append(inline_policy if inline_policy else "  None")
+
+            details.append("Assignments:")
             if assignments:
-                for a in assignments:
-                    print(f"  - {a['PrincipalType']}: {a['PrincipalName']} (Account: {a['AccountId']})")
+                details += [f"  - {a['PrincipalType']}: {a['PrincipalName']} (Account: {a['AccountId']})" for a in assignments]
             else:
-                print("  None")
+                details.append("  None")
+
+            for policy_name in matched_policy_names:
+                filename = f"{policy_name}.txt"
+                write_to_file(filename, details)
 
 if __name__ == "__main__":
     main()
