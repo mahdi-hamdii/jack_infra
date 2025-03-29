@@ -83,9 +83,16 @@ def list_permission_set_assignments(instance_arn, permission_set_arn):
     identitystore_client = boto3.client('identitystore')
     assignments = []
 
-    # Get Identity Store ID
-    instance_info = sso_client.describe_instance(InstanceArn=instance_arn)
-    identity_store_id = instance_info['Instance']['IdentityStoreId']
+    # Get Identity Store ID using list_instances instead of describe_instance
+    instances = sso_client.list_instances()
+    identity_store_id = None
+    for inst in instances['Instances']:
+        if inst['InstanceArn'] == instance_arn:
+            identity_store_id = inst['IdentityStoreId']
+            break
+
+    if identity_store_id is None:
+        raise ValueError(f"IdentityStoreId not found for instance ARN: {instance_arn}")
 
     # First, list all accounts where the permission set is provisioned
     account_ids = []
