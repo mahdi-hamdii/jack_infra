@@ -1,4 +1,6 @@
 import boto3
+import sys
+import ast
 
 def list_permission_sets(instance_arn):
     """List all permission sets in the AWS IAM Identity Center"""
@@ -134,20 +136,29 @@ def main():
     # Replace with your AWS IAM Identity Center Instance ARN
     instance_arn = "arn:aws:sso:::instance/ssoins-xxxxxxxxxxxx"
 
+    if len(sys.argv) < 2:
+        print("Usage: python main.py ['policy1', 'policy2']")
+        sys.exit(1)
+
+    try:
+        input_policies = ast.literal_eval(sys.argv[1])
+        if not isinstance(input_policies, list):
+            raise ValueError
+        input_policies = [p.lower() for p in input_policies]
+    except Exception:
+        print("Error parsing policy list. Provide as: ['policy1', 'policy2']")
+        sys.exit(1)
+
     permission_sets = list_permission_sets(instance_arn)
-    print("Filtered Permission Sets (with IAM, SecretsManager, or Administrator Access):")
+    print("Filtered Permission Sets (matching input policies):")
     for ps in permission_sets:
         managed_policies, inline_policy = get_permission_set_policies(instance_arn, ps)
 
-        # Filter logic for IAM, SecretsManager, or AdministratorAccess
         matched = False
         for policy in managed_policies:
             name = policy.get('Name', '').lower()
             arn = policy.get('Arn', '').lower()
-            if ('iamfullaccess' in name or 'iamfullaccess' in arn or
-                'secretsmanagerreadwrite' in name or 'secretsmanagerreadwrite' in arn or
-                'secretsmanagerfullaccess' in name or 'secretsmanagerfullaccess' in arn or
-                'administratoraccess' in name or 'administratoraccess' in arn):
+            if any(p in name or p in arn for p in input_policies):
                 matched = True
                 break
 
