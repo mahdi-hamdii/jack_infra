@@ -54,23 +54,32 @@ def main():
     instance_arn = "arn:aws:sso:::instance/ssoins-xxxxxxxxxxxx"
 
     permission_sets = list_permission_sets(instance_arn)
-    print("Permission Sets:")
+    print("Filtered Permission Sets (with IAM or SecretsManager Full Access):")
     for ps in permission_sets:
-        print(f"\nPermission Set ARN: {ps}")
         managed_policies, inline_policy = get_permission_set_policies(instance_arn, ps)
 
-        print("Managed Policies:")
-        if managed_policies:
+        # Filter logic for IAM or SecretsManager Full Access
+        matched = False
+        for policy in managed_policies:
+            name = policy.get('Name', '').lower()
+            arn = policy.get('Arn', '').lower()
+            if 'iamfullaccess' in name or 'iamfullaccess' in arn or \
+               'secretsmanagerreadwrite' in name or 'secretsmanagerreadwrite' in arn or \
+               'secretsmanagerfullaccess' in name or 'secretsmanagerfullaccess' in arn:
+                matched = True
+                break
+
+        if matched:
+            print(f"\nPermission Set ARN: {ps}")
+            print("Managed Policies:")
             for policy in managed_policies:
                 print(f"  - {policy['Name']} ({policy['Arn']})")
-        else:
-            print("  None")
 
-        print("Inline Policy:")
-        if inline_policy:
-            print(inline_policy)
-        else:
-            print("  None")
+            print("Inline Policy:")
+            if inline_policy:
+                print(inline_policy)
+            else:
+                print("  None")
 
 if __name__ == "__main__":
     main()
