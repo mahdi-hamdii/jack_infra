@@ -142,10 +142,12 @@ def list_permission_set_assignments(instance_arn, permission_set_arn):
     return assignments
 
 def write_to_csv(filename, rows):
+    fieldnames = ['PermissionSetName', 'PermissionSetArn', 'ManagedPolicies', 'InlinePolicy', 'PrincipalType', 'PrincipalName', 'AccountId']
     with open(filename, 'w', newline='') as csvfile:
-        writer = csv.DictWriter(csvfile, fieldnames=rows[0].keys())
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
-        writer.writerows(rows)
+        if rows:
+            writer.writerows(rows)
 
 def main():
     # Replace with your AWS IAM Identity Center Instance ARN
@@ -183,21 +185,32 @@ def main():
             ps_name = get_permission_set_name(instance_arn, ps)
             assignments = list_permission_set_assignments(instance_arn, ps)
 
-            for assignment in assignments:
+            if not assignments:
                 for matched_policy in matched_policy_names:
                     results_by_policy[matched_policy].append({
                         'PermissionSetName': ps_name,
                         'PermissionSetArn': ps,
                         'ManagedPolicies': ", ".join([p['Name'] for p in managed_policies]),
                         'InlinePolicy': inline_policy if inline_policy else "None",
-                        'PrincipalType': assignment['PrincipalType'],
-                        'PrincipalName': assignment['PrincipalName'],
-                        'AccountId': assignment['AccountId']
+                        'PrincipalType': "",
+                        'PrincipalName': "",
+                        'AccountId': ""
                     })
+            else:
+                for assignment in assignments:
+                    for matched_policy in matched_policy_names:
+                        results_by_policy[matched_policy].append({
+                            'PermissionSetName': ps_name,
+                            'PermissionSetArn': ps,
+                            'ManagedPolicies': ", ".join([p['Name'] for p in managed_policies]),
+                            'InlinePolicy': inline_policy if inline_policy else "None",
+                            'PrincipalType': assignment['PrincipalType'],
+                            'PrincipalName': assignment['PrincipalName'],
+                            'AccountId': assignment['AccountId']
+                        })
 
     for policy, rows in results_by_policy.items():
-        if rows:
-            write_to_csv(f"{policy}.csv", rows)
+        write_to_csv(f"{policy}.csv", rows)
 
 if __name__ == "__main__":
     main()
