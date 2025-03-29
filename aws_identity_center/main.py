@@ -11,14 +11,40 @@ def list_permission_sets(instance_arn):
             InstanceArn=instance_arn,
             NextToken=next_token
         ) if next_token else client.list_permission_sets(InstanceArn=instance_arn)
-        
+
         permission_sets.extend(response.get('PermissionSets', []))
         next_token = response.get('NextToken')
-        
+
         if not next_token:
             break
-    
+
     return permission_sets
+
+def get_permission_set_name(instance_arn, permission_set_arn):
+    client = boto3.client('sso-admin')
+    response = client.describe_permission_set(
+        InstanceArn=instance_arn,
+        PermissionSetArn=permission_set_arn
+    )
+    return response['PermissionSet'].get('Name', 'Unknown')
+
+def get_principal_name(identity_store_id, principal_id, principal_type):
+    client = boto3.client('identitystore')
+    try:
+        if principal_type == 'GROUP':
+            response = client.describe_group(
+                IdentityStoreId=identity_store_id,
+                GroupId=principal_id
+            )
+            return response.get('DisplayName', 'Unknown Group')
+        elif principal_type == 'USER':
+            response = client.describe_user(
+                IdentityStoreId=identity_store_id,
+                UserId=principal_id
+            )
+            return response.get('UserName', 'Unknown User')
+    except Exception as e:
+        return f"Error retrieving name: {e}"
 
 def get_permission_set_policies(instance_arn, permission_set_arn):
     """Retrieve managed and inline policies for a specific permission set"""
@@ -51,18 +77,23 @@ def get_permission_set_policies(instance_arn, permission_set_arn):
 
 def list_permission_set_assignments(instance_arn, permission_set_arn):
     """List users and groups assigned to a permission set across all accounts"""
-    client = boto3.client('sso-admin')
+    sso_client = boto3.client('sso-admin')
+    identitystore_client = boto3.client('identitystore')
     assignments = []
+
+    # Get Identity Store ID
+    instance_info = sso_client.describe_instance(InstanceArn=instance_arn)
+    identity_store_id = instance_info['Instance']['IdentityStoreId']
 
     # First, list all accounts where the permission set is provisioned
     account_ids = []
     next_token = None
     while True:
-        response = client.list_accounts_for_provisioned_permission_set(
+        response = sso_client.list_accounts_for_provisioned_permission_set(
             InstanceArn=instance_arn,
             PermissionSetArn=permission_set_arn,
             NextToken=next_token
-        ) if next_token else client.list_accounts_for_provisioned_permission_set(
+        ) if next_token else sso_client.list_accounts_for_provisioned_permission_set(
             InstanceArn=instance_arn,
             PermissionSetArn=permission_set_arn
         )
@@ -77,20 +108,23 @@ def list_permission_set_assignments(instance_arn, permission_set_arn):
     for account_id in account_ids:
         next_token = None
         while True:
-            response = client.list_account_assignments(
+            response = sso_client.list_account_assignments(
                 InstanceArn=instance_arn,
                 PermissionSetArn=permission_set_arn,
                 AccountId=account_id,
                 NextToken=next_token
-            ) if next_token else client.list_account_assignments(
+            ) if next_token else sso_client.list_account_assignments(
                 InstanceArn=instance_arn,
                 PermissionSetArn=permission_set_arn,
                 AccountId=account_id
             )
 
-            assignments.extend(response.get('AccountAssignments', []))
-            next_token = response.get('NextToken')
+            for assignment in response.get('AccountAssignments', []):
+                principal_name = get_principal_name(identity_store_id, assignment['PrincipalId'], assignment['PrincipalType'])
+                assignment['PrincipalName'] = principal_name
+                assignments.append(assignment)
 
+            next_token = response.get('NextToken')
             if not next_token:
                 break
 
@@ -118,7 +152,8 @@ def main():
                 break
 
         if matched:
-            print(f"\nPermission Set ARN: {ps}")
+            ps_name = get_permission_set_name(instance_arn, ps)
+            print(f"\nPermission Set: {ps_name} ({ps})")
             print("Managed Policies:")
             for policy in managed_policies:
                 print(f"  - {policy['Name']} ({policy['Arn']})")
@@ -134,7 +169,7 @@ def main():
             assignments = list_permission_set_assignments(instance_arn, ps)
             if assignments:
                 for a in assignments:
-                    print(f"  - {a['PrincipalType']}: {a['PrincipalId']} (Account: {a['AccountId']})")
+                    print(f"  - {a['PrincipalType']}: {a['PrincipalName']} (Account: {a['AccountId']})")
             else:
                 print("  None")
 
