@@ -1,3 +1,8 @@
+# This file is responsible for managed Policies, which are 2 types:
+#   - AWS Managed policies: Predefined by AWS (e.g., AdministratorAccess, AmazonS3ReadOnlyAccess)
+#   - Customer Managed Policies: Policies that you create and manage in your account
+
+
 import sys
 import ast
 from permission_set_utils import (
