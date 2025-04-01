@@ -91,7 +91,9 @@ def main():
     print("Filtered Permission Sets (matching inline policy keywords):")
     for keyword in keywords:
         filtered = [row for row in data if keyword in str(row["InlinePolicy"]).lower()]
-        write_to_csv(f"inline_{keyword}.csv", filtered)
+        # print(filtered)
+        safe_keyword = keyword.replace(":", "_").replace("*", "star")
+        write_to_csv(f"inline_{safe_keyword}.csv", filtered)
 
 
 if __name__ == "__main__":
