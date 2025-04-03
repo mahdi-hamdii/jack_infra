@@ -1,5 +1,6 @@
 import boto3
 import csv
+from datetime import datetime
 
 def get_identity_store_id():
     """Retrieve the IdentityStoreId from the active SSO instance."""
@@ -40,8 +41,12 @@ def list_manual_users(identity_store_id):
 
     return [u for u in users if u["Manual"]]
 
-def write_users_to_csv(users, filename="manual_users.csv"):
+def write_users_to_csv(users, filename=None):
     """Write the list of manual users to a CSV file."""
+    if not filename:
+        today = datetime.today().strftime("%Y-%m-%d")
+        filename = f"manual_users_{today}.csv"
+
     fieldnames = ["UserName", "DisplayName", "Status", "Manual"]
     with open(filename, "w", newline="") as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
@@ -52,7 +57,7 @@ def main():
     identity_store_id = get_identity_store_id()
     manual_users = list_manual_users(identity_store_id)
     write_users_to_csv(manual_users)
-    print(f"Exported {len(manual_users)} manually created users to manual_users.csv")
+    print(f"Exported {len(manual_users)} manually created users to CSV with today's date")
 
 if __name__ == "__main__":
     main()
