@@ -6,7 +6,7 @@ from datetime import datetime
 from moto import mock_aws
 from unittest.mock import patch
 from faker import Faker
-from aws_identity_center.list_users import list_users, write_users_to_csv
+from aws_identity_center.list_users_sso import list_users, write_users_to_csv
 
 fake = Faker()
 
