@@ -1,0 +1,70 @@
+import boto3
+import csv
+import configparser
+from botocore.config import Config
+
+def list_sso_profiles():
+    """List all SSO-based AWS profiles from ~/.aws/config."""
+    config = configparser.ConfigParser()
+    config.read(os.path.expanduser("~/.aws/config"))
+
+    profiles = []
+    for section in config.sections():
+        if section.startswith("profile "):
+            profile_name = section.split("profile ")[1]
+            if "sso_start_url" in config[section]:  # Only keep SSO profiles
+                profiles.append(profile_name)
+    return profiles
+
+
+def list_iam_users(session):
+    """List all IAM users using the provided boto3 session."""
+    iam_client = session.client('iam')
+    users = []
+    paginator = iam_client.get_paginator('list_users')
+
+    for page in paginator.paginate():
+        users.extend(page['Users'])
+
+    return users
+
+
+def main():
+    profiles = list_sso_profiles()
+    all_users_data = []
+
+    for profile in profiles:
+        print(f"\n--- Fetching IAM users using profile: {profile} ---")
+        try:
+            session = boto3.Session(profile_name=profile)
+            iam_users = list_iam_users(session)
+
+            # Get account ID
+            sts_client = session.client('sts')
+            account_id = sts_client.get_caller_identity()['Account']
+
+            for user in iam_users:
+                print(f"User: {user['UserName']}")
+                all_users_data.append({
+                    "Profile": profile,
+                    "AccountId": account_id,
+                    "UserName": user['UserName'],
+                    "CreateDate": user['CreateDate'].strftime("%Y-%m-%dT%H:%M:%S")
+                })
+
+        except Exception as e:
+            print(f"Failed to fetch users for profile {profile}: {e}")
+
+    # Save to CSV
+    if all_users_data:
+        with open("iam_users_all_profiles.csv", "w", newline="") as csvfile:
+            fieldnames = ["Profile", "AccountId", "UserName", "CreateDate"]
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(all_users_data)
+
+        print("\n✅ IAM users list exported to iam_users_all_profiles.csv")
+
+
+if __name__ == "__main__":
+    main()
