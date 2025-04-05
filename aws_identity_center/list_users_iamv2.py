@@ -5,7 +5,10 @@ import configparser
 from botocore.config import Config
 
 def list_sso_profiles():
-    """List all SSO-based AWS profiles from ~/.aws/config."""
+    """List all AWS profiles that are defined in ~/.aws/config (assume all are SSO if starting with [profile XYZ])."""
+    import os
+    import configparser
+
     config = configparser.ConfigParser()
     config.read(os.path.expanduser("~/.aws/config"))
 
@@ -13,8 +16,8 @@ def list_sso_profiles():
     for section in config.sections():
         if section.startswith("profile "):
             profile_name = section.split("profile ")[1]
-            if "sso_start_url" in config[section]:  # Only keep SSO profiles
-                profiles.append(profile_name)
+            profiles.append(profile_name)
+
     return profiles
 
 
