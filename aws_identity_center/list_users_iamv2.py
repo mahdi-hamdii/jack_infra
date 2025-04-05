@@ -3,19 +3,19 @@ import csv
 import os
 import configparser
 from botocore.config import Config
+from datetime import datetime
 
-def list_sso_profiles():
-    """List all AWS profiles that are defined in ~/.aws/config (assume all are SSO if starting with [profile XYZ])."""
-    import os
-    import configparser
-
+def list_profiles():
+    """List AWS profiles from ~/.aws/config more safely."""
+    config_path = os.path.expanduser("~/.aws/config")
     config = configparser.ConfigParser()
-    config.read(os.path.expanduser("~/.aws/config"))
+    config.read(config_path)
 
     profiles = []
+
     for section in config.sections():
-        if section.startswith("profile "):
-            profile_name = section.split("profile ")[1]
+        if section.lower().strip().startswith("profile "):
+            profile_name = section.strip().split("profile ", 1)[-1].strip()
             profiles.append(profile_name)
 
     return profiles
@@ -34,30 +34,31 @@ def list_iam_users(session):
 
 
 def main():
-    profiles = list_sso_profiles()
+    profiles = list_profiles()
 
-    # ✅ First, print all profiles found
-    print("\n✅ SSO Profiles found:")
+    print("\n✅ Profiles to work on:")
     for profile in profiles:
         print(f"  - {profile}")
 
     all_users_data = []
 
-    # ✅ Now, go one by one and fetch users
     for profile in profiles:
         print(f"\n🔵 Fetching IAM users for profile: {profile}")
 
         try:
+            # Create session for that profile
             session = boto3.Session(profile_name=profile)
-            iam_users = list_iam_users(session)
 
-            # Get account ID for reference
+            # Get the account ID (important for reporting)
             sts_client = session.client('sts')
             account_id = sts_client.get_caller_identity()['Account']
 
+            # List IAM users
+            iam_users = list_iam_users(session)
+
             if iam_users:
                 for user in iam_users:
-                    print(f"    User: {user['UserName']}")
+                    print(f"    ➡️  {user['UserName']}")
                     all_users_data.append({
                         "Profile": profile,
                         "AccountId": account_id,
@@ -65,14 +66,13 @@ def main():
                         "CreateDate": user['CreateDate'].strftime("%Y-%m-%dT%H:%M:%S")
                     })
             else:
-                print(f"    ⚠️ No IAM users found for profile {profile}")
+                print(f"    ⚠️  No IAM users found for profile {profile}")
 
         except Exception as e:
             print(f"❌ Failed to fetch users for profile {profile}: {e}")
 
     # Save to CSV
     if all_users_data:
-        from datetime import datetime
         today = datetime.today().strftime("%Y-%m-%d")
         csv_filename = f"iam_users_all_profiles_{today}.csv"
 
