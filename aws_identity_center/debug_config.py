@@ -1,21 +1,31 @@
 import os
 import configparser
 
-def debug_print_aws_config_sections():
-    """Print all sections from ~/.aws/config to debug what we are seeing."""
+def list_profiles_debug():
+    """List AWS profiles from ~/.aws/config more safely."""
     config_path = os.path.expanduser("~/.aws/config")
     config = configparser.ConfigParser()
     config.read(config_path)
 
-    print(f"\n📄 Reading config file: {config_path}\n")
-    print("✅ Sections detected:")
+    profiles = []
 
-    if not config.sections():
-        print("❌ No sections found in ~/.aws/config! (Check the file path or content)")
-        return
-
+    print(f"\n✅ Sections detected:")
     for section in config.sections():
         print(f"  - {section}")
 
+        # Safely detect if it's a profile
+        if section.lower().strip().startswith("profile "):
+            profile_name = section.strip().split("profile ", 1)[-1].strip()
+            profiles.append(profile_name)
+
+    if not profiles:
+        print("\n❌ No profiles detected based on section names. Please check your file format carefully!")
+    else:
+        print("\n✅ Profiles extracted:")
+        for profile in profiles:
+            print(f"  - {profile}")
+
+    return profiles
+
 if __name__ == "__main__":
-    debug_print_aws_config_sections()
+    list_profiles_debug()
