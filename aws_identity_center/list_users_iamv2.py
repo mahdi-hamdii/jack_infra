@@ -6,7 +6,7 @@ from botocore.config import Config
 from datetime import datetime
 
 def list_profiles():
-    """List AWS profiles from ~/.aws/config more safely."""
+    """List AWS profiles from ~/.aws/config."""
     config_path = os.path.expanduser("~/.aws/config")
     config = configparser.ConfigParser()
     config.read(config_path)
@@ -36,20 +36,20 @@ def list_iam_users(session):
 def main():
     profiles = list_profiles()
 
-    print("\n✅ Profiles to work on:")
+    print("\nProfiles to work on:")
     for profile in profiles:
         print(f"  - {profile}")
 
     all_users_data = []
 
     for profile in profiles:
-        print(f"\n🔵 Fetching IAM users for profile: {profile}")
+        print(f"\nFetching IAM users for profile: {profile}")
 
         try:
             # Create session for that profile
             session = boto3.Session(profile_name=profile)
 
-            # Get the account ID (important for reporting)
+            # Get the account ID
             sts_client = session.client('sts')
             account_id = sts_client.get_caller_identity()['Account']
 
@@ -58,7 +58,7 @@ def main():
 
             if iam_users:
                 for user in iam_users:
-                    print(f"    ➡️  {user['UserName']}")
+                    print(f"    Found user: {user['UserName']}")
                     all_users_data.append({
                         "Profile": profile,
                         "AccountId": account_id,
@@ -66,10 +66,10 @@ def main():
                         "CreateDate": user['CreateDate'].strftime("%Y-%m-%dT%H:%M:%S")
                     })
             else:
-                print(f"    ⚠️  No IAM users found for profile {profile}")
+                print(f"    No IAM users found for profile {profile}")
 
         except Exception as e:
-            print(f"❌ Failed to fetch users for profile {profile}: {e}")
+            print(f"Error fetching users for profile {profile}: {e}")
 
     # Save to CSV
     if all_users_data:
@@ -82,9 +82,9 @@ def main():
             writer.writeheader()
             writer.writerows(all_users_data)
 
-        print(f"\n✅ IAM users list exported to {csv_filename}")
+        print(f"\nIAM users list exported to {csv_filename}")
     else:
-        print("\n⚠️ No users found across any profiles!")
+        print("\nNo users found across any profiles.")
 
 
 if __name__ == "__main__":
