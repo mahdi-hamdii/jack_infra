@@ -1,5 +1,6 @@
 import boto3
 import csv
+import os
 import configparser
 from botocore.config import Config
 
@@ -31,39 +32,56 @@ def list_iam_users(session):
 
 def main():
     profiles = list_sso_profiles()
+
+    # ✅ First, print all profiles found
+    print("\n✅ SSO Profiles found:")
+    for profile in profiles:
+        print(f"  - {profile}")
+
     all_users_data = []
 
+    # ✅ Now, go one by one and fetch users
     for profile in profiles:
-        print(f"\n--- Fetching IAM users using profile: {profile} ---")
+        print(f"\n🔵 Fetching IAM users for profile: {profile}")
+
         try:
             session = boto3.Session(profile_name=profile)
             iam_users = list_iam_users(session)
 
-            # Get account ID
+            # Get account ID for reference
             sts_client = session.client('sts')
             account_id = sts_client.get_caller_identity()['Account']
 
-            for user in iam_users:
-                print(f"User: {user['UserName']}")
-                all_users_data.append({
-                    "Profile": profile,
-                    "AccountId": account_id,
-                    "UserName": user['UserName'],
-                    "CreateDate": user['CreateDate'].strftime("%Y-%m-%dT%H:%M:%S")
-                })
+            if iam_users:
+                for user in iam_users:
+                    print(f"    User: {user['UserName']}")
+                    all_users_data.append({
+                        "Profile": profile,
+                        "AccountId": account_id,
+                        "UserName": user['UserName'],
+                        "CreateDate": user['CreateDate'].strftime("%Y-%m-%dT%H:%M:%S")
+                    })
+            else:
+                print(f"    ⚠️ No IAM users found for profile {profile}")
 
         except Exception as e:
-            print(f"Failed to fetch users for profile {profile}: {e}")
+            print(f"❌ Failed to fetch users for profile {profile}: {e}")
 
     # Save to CSV
     if all_users_data:
-        with open("iam_users_all_profiles.csv", "w", newline="") as csvfile:
+        from datetime import datetime
+        today = datetime.today().strftime("%Y-%m-%d")
+        csv_filename = f"iam_users_all_profiles_{today}.csv"
+
+        with open(csv_filename, "w", newline="") as csvfile:
             fieldnames = ["Profile", "AccountId", "UserName", "CreateDate"]
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(all_users_data)
 
-        print("\n✅ IAM users list exported to iam_users_all_profiles.csv")
+        print(f"\n✅ IAM users list exported to {csv_filename}")
+    else:
+        print("\n⚠️ No users found across any profiles!")
 
 
 if __name__ == "__main__":
