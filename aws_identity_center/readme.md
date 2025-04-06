@@ -61,12 +61,6 @@ In case of **full match**, **partial match detection is skipped** between those 
 
 ---
 
-## 📂 Outputs
-
-After running the scripts, results will be saved under:
-
----
-
 ## 🧪 Folder: `aws_identity_center/tests/`
 
 This folder contains unit tests for the project.
