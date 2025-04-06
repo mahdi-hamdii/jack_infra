@@ -2,6 +2,8 @@
 
 This project provides a set of scripts to inspect and audit AWS IAM Identity Center (SSO) configurations, including permission sets, inline/managed policies, and user provisioning details.
 
+---
+
 ## 📁 Folder: `aws_identity_center/`
 
 Contains all the utility and main scripts:
@@ -13,51 +15,90 @@ Contains all the utility and main scripts:
 
 ### `main_inline_policy.py`
 
-- Searches inline policies within permission sets for specific **keywords** (e.g., `"s3:*"`, `"secretsmanager"`).
+- Searches **inline policies** within permission sets for specific **keywords** (e.g., `"s3:*"`, `"secretsmanager"`).
 - Outputs all matching permission sets and their assignments to CSV.
+
+### `list_users_sso.py`
+
+- Lists users provisioned manually (not through SCIM) in AWS Identity Store.
+- Optionally lists **all** users (manual + SCIM).
+- Outputs users to a dated CSV file.
+
+### `list_users_iam.py`
+
+- Lists IAM users in each account of the organization using a role to be assumed into each account for access.
+
+### `list_users_iamv2.py`
+
+- Lists IAM users in each account of the accounts that are configured in the .aws/config file as profiles.
 
 ### `permission_set_utils.py`
 
-- Contains shared utility functions:
+- Contains **shared helper functions**:
   - List permission sets
-  - Describe permission sets
-  - Fetch inline/managed policies
-  - List assignments
-  - Write CSV output
+  - Get inline/managed policies
+  - Fetch account assignments
+  - Write data to CSV
 
-### `list_users.py`
+### `find_duplicate_policies.py`
 
-- Lists users from the Identity Store.
-- Supports filtering only manually created users (without SCIM ExternalIds) or listing all users.
-- Marks if the user is active and saves results to a dated CSV file.
+- Detects **duplicate policies** across permission sets:
+  - **Full Match**: Two permission sets have identical inline policy documents.
+  - **Partial Match**: Two permission sets share one or more identical statements (but policies are not 100% identical).
+- Also detects duplicate **managed policies** attached to multiple permission sets.
+- Outputs two CSV files under `outputs/`:
+  - `duplicate_inline_policies_YYYY-MM-DD.csv`
+  - `duplicate_managed_policies_YYYY-MM-DD.csv`
 
-## 🧪 Folder: `aws_identity_center/tests/`
+## 📋 Full vs Partial Match Explained
 
-This folder contains tests for the above modules.
+| MatchType    | Description                                                                 |
+| :----------- | :-------------------------------------------------------------------------- |
+| fullMatch    | Entire inline policy (JSON) is **identical** between two permission sets    |
+| partialMatch | Only **one or more Statement blocks** are identical between permission sets |
 
-### `test_list_users.py`
-
-- Mocks the Identity Store using Moto.
-- Uses Faker to generate fake users (manual and SCIM-provisioned).
-- Verifies filtering behavior for manual users and all users.
-- Checks CSV file creation and file content.
+In case of **full match**, **partial match detection is skipped** between those permission sets (no double-counting).
 
 ---
 
-## 🧰 Environment Setup
+## 📂 Outputs
+
+After running the scripts, results will be saved under:
+
+---
+
+## 🧪 Folder: `aws_identity_center/tests/`
+
+This folder contains unit tests for the project.
+
+### `test_list_users_sso.py`
+
+- Tests listing of manual and SCIM users.
+- Uses **Moto** + **Faker** to mock AWS Identity Store responses.
+
+### `test_find_duplicate_policies.py`
+
+- Tests full match and partial match detection for inline policies.
+- Verifies correct CSV output.
+- Mocks permission sets, inline policies, and managed policies.
+- Ensures no false double-counting between full and partial matches.
+
+---
+
+## 🛠 Environment Setup
 
 ### 1. Create a Virtual Environment
 
-```bash
+````bash
 python3 -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
+
 
 ### 2. Install Dependencies
 
 ```bash
 pip install boto3 "moto>=5.2.0" faker pytest
-```
+````
 
 ✅ Ensure Moto version is >= 5.2.0 to have full `identitystore` mocking support.
 
