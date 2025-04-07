@@ -5,6 +5,7 @@ import configparser
 from botocore.config import Config
 from datetime import datetime
 
+
 def list_profiles():
     """List AWS profiles from ~/.aws/config."""
     config_path = os.path.expanduser("~/.aws/config")
@@ -33,6 +34,27 @@ def list_iam_users(session):
     return users
 
 
+def get_user_access_keys_last_used(iam_client, user_name):
+    """Retrieve the most recent Access Key LastUsedDate for a user."""
+    access_keys = iam_client.list_access_keys(UserName=user_name).get('AccessKeyMetadata', [])
+    last_used_dates = []
+
+    for key in access_keys:
+        access_key_id = key['AccessKeyId']
+        try:
+            response = iam_client.get_access_key_last_used(AccessKeyId=access_key_id)
+            last_used_date = response['AccessKeyLastUsed'].get('LastUsedDate')
+            if last_used_date:
+                last_used_dates.append(last_used_date)
+        except Exception as e:
+            print(f"Warning: Could not get last used date for key {access_key_id}: {e}")
+
+    if last_used_dates:
+        return max(last_used_dates).strftime("%Y-%m-%dT%H:%M:%S")
+    else:
+        return None
+
+
 def main():
     profiles = list_profiles()
 
@@ -55,15 +77,26 @@ def main():
 
             # List IAM users
             iam_users = list_iam_users(session)
+            iam_client = session.client('iam')
 
             if iam_users:
                 for user in iam_users:
-                    print(f"    Found user: {user['UserName']}")
+                    user_name = user['UserName']
+                    print(f"    Found user: {user_name}")
+
+                    console_last_login = user.get('PasswordLastUsed')
+                    if console_last_login:
+                        console_last_login = console_last_login.strftime("%Y-%m-%dT%H:%M:%S")
+
+                    access_key_last_used = get_user_access_keys_last_used(iam_client, user_name)
+
                     all_users_data.append({
                         "Profile": profile,
                         "AccountId": account_id,
-                        "UserName": user['UserName'],
-                        "CreateDate": user['CreateDate'].strftime("%Y-%m-%dT%H:%M:%S")
+                        "UserName": user_name,
+                        "CreateDate": user['CreateDate'].strftime("%Y-%m-%dT%H:%M:%S"),
+                        "ConsoleLastLogin": console_last_login or "Never",
+                        "AccessKeyLastUsed": access_key_last_used or "Never"
                     })
             else:
                 print(f"    No IAM users found for profile {profile}")
@@ -77,7 +110,14 @@ def main():
         csv_filename = f"iam_users_all_profiles_{today}.csv"
 
         with open(csv_filename, "w", newline="") as csvfile:
-            fieldnames = ["Profile", "AccountId", "UserName", "CreateDate"]
+            fieldnames = [
+                "Profile",
+                "AccountId",
+                "UserName",
+                "CreateDate",
+                "ConsoleLastLogin",
+                "AccessKeyLastUsed"
+            ]
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(all_users_data)
