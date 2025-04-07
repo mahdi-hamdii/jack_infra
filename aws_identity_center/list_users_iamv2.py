@@ -3,7 +3,7 @@ import csv
 import os
 import configparser
 from botocore.config import Config
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 def list_profiles():
@@ -50,9 +50,20 @@ def get_user_access_keys_last_used(iam_client, user_name):
             print(f"Warning: Could not get last used date for key {access_key_id}: {e}")
 
     if last_used_dates:
-        return max(last_used_dates).strftime("%Y-%m-%dT%H:%M:%S")
+        return max(last_used_dates)
     else:
         return None
+
+
+def is_user_active(console_last_login, access_key_last_used):
+    """Determine if user is active within the last 30 days."""
+    cutoff_date = datetime.utcnow() - timedelta(days=30)
+
+    if console_last_login and console_last_login > cutoff_date:
+        return "Yes"
+    if access_key_last_used and access_key_last_used > cutoff_date:
+        return "Yes"
+    return "No"
 
 
 def main():
@@ -85,19 +96,19 @@ def main():
                     print(f"    Found user: {user_name}")
 
                     console_last_login = user.get('PasswordLastUsed')
-                    if console_last_login:
-                        console_last_login = console_last_login.strftime("%Y-%m-%dT%H:%M:%S")
-
                     access_key_last_used = get_user_access_keys_last_used(iam_client, user_name)
 
-                    all_users_data.append({
+                    user_record = {
                         "Profile": profile,
                         "AccountId": account_id,
                         "UserName": user_name,
                         "CreateDate": user['CreateDate'].strftime("%Y-%m-%dT%H:%M:%S"),
-                        "ConsoleLastLogin": console_last_login or "Never",
-                        "AccessKeyLastUsed": access_key_last_used or "Never"
-                    })
+                        "ConsoleLastLogin": console_last_login.strftime("%Y-%m-%dT%H:%M:%S") if console_last_login else "Never",
+                        "AccessKeyLastUsed": access_key_last_used.strftime("%Y-%m-%dT%H:%M:%S") if access_key_last_used else "Never",
+                        "IsActive": is_user_active(console_last_login, access_key_last_used)
+                    }
+
+                    all_users_data.append(user_record)
             else:
                 print(f"    No IAM users found for profile {profile}")
 
@@ -116,7 +127,8 @@ def main():
                 "UserName",
                 "CreateDate",
                 "ConsoleLastLogin",
-                "AccessKeyLastUsed"
+                "AccessKeyLastUsed",
+                "IsActive"
             ]
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             writer.writeheader()
