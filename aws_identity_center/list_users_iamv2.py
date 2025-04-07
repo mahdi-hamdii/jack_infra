@@ -66,12 +66,49 @@ def is_user_active(console_last_login, access_key_last_used):
     return "No"
 
 
+def list_identity_store_usernames():
+    """Fetch all SSO usernames from Identity Store (only the part before @)."""
+    client = boto3.client("sso-admin")
+    instances = client.list_instances()
+    identity_store_id = instances["Instances"][0]["IdentityStoreId"]
+
+    identitystore_client = boto3.client("identitystore")
+    usernames = set()
+    next_token = None
+
+    while True:
+        if next_token:
+            response = identitystore_client.list_users(
+                IdentityStoreId=identity_store_id,
+                NextToken=next_token
+            )
+        else:
+            response = identitystore_client.list_users(
+                IdentityStoreId=identity_store_id
+            )
+
+        for user in response.get("Users", []):
+            user_name = user.get("UserName", "")
+            if "@" in user_name:
+                usernames.add(user_name.split("@")[0])
+
+        next_token = response.get("NextToken")
+        if not next_token:
+            break
+
+    return usernames
+
+
 def main():
     profiles = list_profiles()
 
     print("\nProfiles to work on:")
     for profile in profiles:
         print(f"  - {profile}")
+
+    print("\nFetching SSO usernames to determine migration...")
+    sso_usernames = list_identity_store_usernames()
+    print(f"Collected {len(sso_usernames)} SSO usernames.\n")
 
     all_users_data = []
 
@@ -98,6 +135,8 @@ def main():
                     console_last_login = user.get('PasswordLastUsed')
                     access_key_last_used = get_user_access_keys_last_used(iam_client, user_name)
 
+                    is_migrated = "Yes" if user_name in sso_usernames else "No"
+
                     user_record = {
                         "Profile": profile,
                         "AccountId": account_id,
@@ -105,7 +144,8 @@ def main():
                         "CreateDate": user['CreateDate'].strftime("%Y-%m-%dT%H:%M:%S"),
                         "ConsoleLastLogin": console_last_login.strftime("%Y-%m-%dT%H:%M:%S") if console_last_login else "Never",
                         "AccessKeyLastUsed": access_key_last_used.strftime("%Y-%m-%dT%H:%M:%S") if access_key_last_used else "Never",
-                        "IsActive": is_user_active(console_last_login, access_key_last_used)
+                        "IsActive": is_user_active(console_last_login, access_key_last_used),
+                        "IsMigrated": is_migrated
                     }
 
                     all_users_data.append(user_record)
@@ -128,7 +168,8 @@ def main():
                 "CreateDate",
                 "ConsoleLastLogin",
                 "AccessKeyLastUsed",
-                "IsActive"
+                "IsActive",
+                "IsMigrated"
             ]
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             writer.writeheader()
