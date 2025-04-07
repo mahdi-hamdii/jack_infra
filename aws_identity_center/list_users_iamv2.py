@@ -3,7 +3,7 @@ import csv
 import os
 import configparser
 from botocore.config import Config
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 
 def list_profiles():
@@ -57,7 +57,7 @@ def get_user_access_keys_last_used(iam_client, user_name):
 
 def is_user_active(console_last_login, access_key_last_used):
     """Determine if user is active within the last 30 days."""
-    cutoff_date = datetime.utcnow() - timedelta(days=30)
+    cutoff_date = datetime.now(timezone.utc) - timedelta(days=30)
 
     if console_last_login and console_last_login > cutoff_date:
         return "Yes"
