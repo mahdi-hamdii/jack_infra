@@ -58,7 +58,7 @@ def get_user_access_keys_last_used(iam_client, user_name):
 
 
 def get_codecommit_last_used(session):
-    """Generate and retrieve Credential Report and parse CodeCommit usage."""
+    """Generate and retrieve Credential Report and parse CodeCommit/SSH usage."""
     iam_client = session.client("iam")
 
     # Generate report
@@ -72,35 +72,57 @@ def get_codecommit_last_used(session):
     lines = report_content.splitlines()
     headers = lines[0].split(",")
 
-    # Verify if codecommit_credential_last_used_date exists
-    if "codecommit_credential_last_used_date" not in headers:
+    username_index = headers.index("user")
+    has_codecommit = "codecommit_credential_last_used_date" in headers
+    has_ssh_key = "ssh_key_last_used_date" in headers
+
+    if not has_codecommit and not has_ssh_key:
         print(
-            "Warning: codecommit_credential_last_used_date field not found in credential report. Skipping CodeCommit usage for this account."
+            "Warning: Neither CodeCommit credential nor SSH key usage fields found. Skipping for this account."
         )
         return {}
-
-    username_index = headers.index("user")
-    print("username_index", username_index)
-    codecommit_index = headers.index("codecommit_credential_last_used_date")
-    print("codecommit_index", codecommit_index)
 
     usage = {}
 
     for line in lines[1:]:
         fields = line.split(",")
-        if len(fields) <= codecommit_index:
-            continue
 
         username = fields[username_index]
-        codecommit_last_used = fields[codecommit_index]
 
-        if codecommit_last_used and codecommit_last_used != "N/A":
+        # Initialize
+        codecommit_last_used = None
+        ssh_key_last_used = None
+
+        if has_codecommit:
             try:
-                usage[username] = datetime.strptime(
-                    codecommit_last_used, "%Y-%m-%dT%H:%M:%S+00:00"
-                ).replace(tzinfo=timezone.utc)
+                codecommit_index = headers.index("codecommit_credential_last_used_date")
+                cc_date = fields[codecommit_index]
+                if cc_date and cc_date != "N/A":
+                    codecommit_last_used = datetime.strptime(
+                        cc_date, "%Y-%m-%dT%H:%M:%S+00:00"
+                    ).replace(tzinfo=timezone.utc)
             except Exception:
                 pass
+
+        if has_ssh_key:
+            try:
+                ssh_index = headers.index("ssh_key_last_used_date")
+                ssh_date = fields[ssh_index]
+                if ssh_date and ssh_date != "N/A":
+                    ssh_key_last_used = datetime.strptime(
+                        ssh_date, "%Y-%m-%dT%H:%M:%S+00:00"
+                    ).replace(tzinfo=timezone.utc)
+            except Exception:
+                pass
+
+        # Pick the latest between CodeCommit or SSH usage
+        if codecommit_last_used and ssh_key_last_used:
+            latest = max(codecommit_last_used, ssh_key_last_used)
+        else:
+            latest = codecommit_last_used or ssh_key_last_used
+
+        if latest:
+            usage[username] = latest
 
     return usage
 
