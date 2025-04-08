@@ -71,26 +71,36 @@ def get_codecommit_last_used(session):
     # Parse report
     lines = report_content.splitlines()
     headers = lines[0].split(",")
+
+    # Verify if codecommit_credential_last_used_date exists
+    if "codecommit_credential_last_used_date" not in headers:
+        print(
+            "Warning: codecommit_credential_last_used_date field not found in credential report. Skipping CodeCommit usage for this account."
+        )
+        return {}
+
     username_index = headers.index("user")
-    codecommit_index = headers.index("codecommit_credential_last_used_date")
-    print("headers", headers)
     print("username_index", username_index)
+    codecommit_index = headers.index("codecommit_credential_last_used_date")
     print("codecommit_index", codecommit_index)
 
     usage = {}
 
-    # for line in lines[1:]:
-    #     fields = line.split(",")
-    #     username = fields[username_index]
-    #     codecommit_last_used = fields[codecommit_index]
+    for line in lines[1:]:
+        fields = line.split(",")
+        if len(fields) <= codecommit_index:
+            continue
 
-    #     if codecommit_last_used and codecommit_last_used != "N/A":
-    #         try:
-    #             usage[username] = datetime.strptime(
-    #                 codecommit_last_used, "%Y-%m-%dT%H:%M:%S+00:00"
-    #             ).replace(tzinfo=timezone.utc)
-    #         except Exception:
-    #             pass
+        username = fields[username_index]
+        codecommit_last_used = fields[codecommit_index]
+
+        if codecommit_last_used and codecommit_last_used != "N/A":
+            try:
+                usage[username] = datetime.strptime(
+                    codecommit_last_used, "%Y-%m-%dT%H:%M:%S+00:00"
+                ).replace(tzinfo=timezone.utc)
+            except Exception:
+                pass
 
     return usage
 
