@@ -57,13 +57,50 @@ def get_user_access_keys_last_used(iam_client, user_name):
         return None
 
 
-def is_user_active(console_last_login, access_key_last_used):
+def get_codecommit_last_used(session):
+    """Generate and retrieve Credential Report and parse CodeCommit usage."""
+    iam_client = session.client("iam")
+
+    # Generate report
+    iam_client.generate_credential_report()
+
+    # Fetch report
+    response = iam_client.get_credential_report()
+    report_content = response["Content"].decode("utf-8")
+
+    # Parse report
+    lines = report_content.splitlines()
+    headers = lines[0].split(",")
+    username_index = headers.index("user")
+    codecommit_index = headers.index("codecommit_credential_last_used_date")
+
+    usage = {}
+
+    for line in lines[1:]:
+        fields = line.split(",")
+        username = fields[username_index]
+        codecommit_last_used = fields[codecommit_index]
+
+        if codecommit_last_used and codecommit_last_used != "N/A":
+            try:
+                usage[username] = datetime.strptime(
+                    codecommit_last_used, "%Y-%m-%dT%H:%M:%S+00:00"
+                ).replace(tzinfo=timezone.utc)
+            except Exception:
+                pass
+
+    return usage
+
+
+def is_user_active(console_last_login, access_key_last_used, codecommit_last_used):
     """Determine if user is active within the last 30 days."""
     cutoff_date = datetime.now(timezone.utc) - timedelta(days=30)
 
     if console_last_login and console_last_login > cutoff_date:
         return "Yes"
     if access_key_last_used and access_key_last_used > cutoff_date:
+        return "Yes"
+    if codecommit_last_used and codecommit_last_used > cutoff_date:
         return "Yes"
     return "No"
 
@@ -124,6 +161,9 @@ def main():
             sts_client = session.client("sts")
             account_id = sts_client.get_caller_identity()["Account"]
 
+            # Get CodeCommit credential usage
+            codecommit_usage = get_codecommit_last_used(session)
+
             # List IAM users
             iam_users = list_iam_users(session)
             iam_client = session.client("iam")
@@ -140,6 +180,8 @@ def main():
 
                     is_migrated = "Yes" if user_name.lower() in sso_usernames else "No"
 
+                    codecommit_last_used = codecommit_usage.get(user_name)
+
                     user_record = {
                         "Profile": profile,
                         "AccountId": account_id,
@@ -155,8 +197,15 @@ def main():
                             if access_key_last_used
                             else "Never"
                         ),
+                        "CodeCommitLastUsed": (
+                            codecommit_last_used.strftime("%Y-%m-%dT%H:%M:%S")
+                            if codecommit_last_used
+                            else "Never"
+                        ),
                         "IsActive": is_user_active(
-                            console_last_login, access_key_last_used
+                            console_last_login,
+                            access_key_last_used,
+                            codecommit_last_used,
                         ),
                         "IsMigrated": is_migrated,
                     }
@@ -181,6 +230,7 @@ def main():
                 "CreateDate",
                 "ConsoleLastLogin",
                 "AccessKeyLastUsed",
+                "CodeCommitLastUsed",
                 "IsActive",
                 "IsMigrated",
             ]
