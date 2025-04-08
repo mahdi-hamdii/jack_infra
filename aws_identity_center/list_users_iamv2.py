@@ -24,26 +24,28 @@ def list_profiles():
 
 def list_iam_users(session):
     """List all IAM users using the provided boto3 session."""
-    iam_client = session.client('iam')
+    iam_client = session.client("iam")
     users = []
-    paginator = iam_client.get_paginator('list_users')
+    paginator = iam_client.get_paginator("list_users")
 
     for page in paginator.paginate():
-        users.extend(page['Users'])
+        users.extend(page["Users"])
 
     return users
 
 
 def get_user_access_keys_last_used(iam_client, user_name):
     """Retrieve the most recent Access Key LastUsedDate for a user."""
-    access_keys = iam_client.list_access_keys(UserName=user_name).get('AccessKeyMetadata', [])
+    access_keys = iam_client.list_access_keys(UserName=user_name).get(
+        "AccessKeyMetadata", []
+    )
     last_used_dates = []
 
     for key in access_keys:
-        access_key_id = key['AccessKeyId']
+        access_key_id = key["AccessKeyId"]
         try:
             response = iam_client.get_access_key_last_used(AccessKeyId=access_key_id)
-            last_used_date = response['AccessKeyLastUsed'].get('LastUsedDate')
+            last_used_date = response["AccessKeyLastUsed"].get("LastUsedDate")
             if last_used_date:
                 last_used_dates.append(last_used_date)
         except Exception as e:
@@ -79,8 +81,7 @@ def list_identity_store_usernames():
     while True:
         if next_token:
             response = identitystore_client.list_users(
-                IdentityStoreId=identity_store_id,
-                NextToken=next_token
+                IdentityStoreId=identity_store_id, NextToken=next_token
             )
         else:
             response = identitystore_client.list_users(
@@ -120,20 +121,22 @@ def main():
             session = boto3.Session(profile_name=profile)
 
             # Get the account ID
-            sts_client = session.client('sts')
-            account_id = sts_client.get_caller_identity()['Account']
+            sts_client = session.client("sts")
+            account_id = sts_client.get_caller_identity()["Account"]
 
             # List IAM users
             iam_users = list_iam_users(session)
-            iam_client = session.client('iam')
+            iam_client = session.client("iam")
 
             if iam_users:
                 for user in iam_users:
-                    user_name = user['UserName']
+                    user_name = user["UserName"]
                     print(f"    Found user: {user_name}")
 
-                    console_last_login = user.get('PasswordLastUsed')
-                    access_key_last_used = get_user_access_keys_last_used(iam_client, user_name)
+                    console_last_login = user.get("PasswordLastUsed")
+                    access_key_last_used = get_user_access_keys_last_used(
+                        iam_client, user_name
+                    )
 
                     is_migrated = "Yes" if user_name.lower() in sso_usernames else "No"
 
@@ -141,11 +144,21 @@ def main():
                         "Profile": profile,
                         "AccountId": account_id,
                         "UserName": user_name,
-                        "CreateDate": user['CreateDate'].strftime("%Y-%m-%dT%H:%M:%S"),
-                        "ConsoleLastLogin": console_last_login.strftime("%Y-%m-%dT%H:%M:%S") if console_last_login else "Never",
-                        "AccessKeyLastUsed": access_key_last_used.strftime("%Y-%m-%dT%H:%M:%S") if access_key_last_used else "Never",
-                        "IsActive": is_user_active(console_last_login, access_key_last_used),
-                        "IsMigrated": is_migrated
+                        "CreateDate": user["CreateDate"].strftime("%Y-%m-%dT%H:%M:%S"),
+                        "ConsoleLastLogin": (
+                            console_last_login.strftime("%Y-%m-%dT%H:%M:%S")
+                            if console_last_login
+                            else "Never"
+                        ),
+                        "AccessKeyLastUsed": (
+                            access_key_last_used.strftime("%Y-%m-%dT%H:%M:%S")
+                            if access_key_last_used
+                            else "Never"
+                        ),
+                        "IsActive": is_user_active(
+                            console_last_login, access_key_last_used
+                        ),
+                        "IsMigrated": is_migrated,
                     }
 
                     all_users_data.append(user_record)
@@ -169,7 +182,7 @@ def main():
                 "ConsoleLastLogin",
                 "AccessKeyLastUsed",
                 "IsActive",
-                "IsMigrated"
+                "IsMigrated",
             ]
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             writer.writeheader()
