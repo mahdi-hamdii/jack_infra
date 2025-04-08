@@ -2,6 +2,7 @@ import boto3
 import csv
 import os
 import configparser
+import time
 from botocore.config import Config
 from datetime import datetime, timedelta, timezone
 
@@ -57,74 +58,34 @@ def get_user_access_keys_last_used(iam_client, user_name):
         return None
 
 
-def get_codecommit_last_used(session):
-    """Generate and retrieve Credential Report and parse CodeCommit/SSH usage."""
-    iam_client = session.client("iam")
+def get_codecommit_last_used(iam_client, user_arn):
+    """Retrieve the LastAccessed date for AWS CodeCommit service for a user."""
+    try:
+        # Start the report generation
+        job_response = iam_client.generate_service_last_accessed_details(Arn=user_arn)
+        job_id = job_response["JobId"]
 
-    # Generate report
-    iam_client.generate_credential_report()
+        # Poll until job is ready
+        while True:
+            status_response = iam_client.get_service_last_accessed_details(JobId=job_id)
+            if status_response["JobStatus"] in ["COMPLETED", "FAILED"]:
+                break
+            time.sleep(1)
 
-    # Fetch report
-    response = iam_client.get_credential_report()
-    report_content = response["Content"].decode("utf-8")
+        if status_response["JobStatus"] == "FAILED":
+            print(f"Warning: Service access report generation failed for {user_arn}")
+            return None
 
-    # Parse report
-    lines = report_content.splitlines()
-    headers = lines[0].split(",")
+        # Parse the services used
+        for service in status_response.get("ServicesLastAccessed", []):
+            if service["ServiceName"] == "AWS CodeCommit":
+                last_authenticated = service.get("LastAuthenticated")
+                return last_authenticated
 
-    username_index = headers.index("user")
-    has_codecommit = "codecommit_credential_last_used_date" in headers
-    has_ssh_key = "ssh_key_last_used_date" in headers
+    except Exception as e:
+        print(f"Warning: Error getting CodeCommit usage for {user_arn}: {e}")
 
-    if not has_codecommit and not has_ssh_key:
-        print(
-            "Warning: Neither CodeCommit credential nor SSH key usage fields found. Skipping for this account."
-        )
-        return {}
-
-    usage = {}
-
-    for line in lines[1:]:
-        fields = line.split(",")
-
-        username = fields[username_index]
-
-        # Initialize
-        codecommit_last_used = None
-        ssh_key_last_used = None
-
-        if has_codecommit:
-            try:
-                codecommit_index = headers.index("codecommit_credential_last_used_date")
-                cc_date = fields[codecommit_index]
-                if cc_date and cc_date != "N/A":
-                    codecommit_last_used = datetime.strptime(
-                        cc_date, "%Y-%m-%dT%H:%M:%S+00:00"
-                    ).replace(tzinfo=timezone.utc)
-            except Exception:
-                pass
-
-        if has_ssh_key:
-            try:
-                ssh_index = headers.index("ssh_key_last_used_date")
-                ssh_date = fields[ssh_index]
-                if ssh_date and ssh_date != "N/A":
-                    ssh_key_last_used = datetime.strptime(
-                        ssh_date, "%Y-%m-%dT%H:%M:%S+00:00"
-                    ).replace(tzinfo=timezone.utc)
-            except Exception:
-                pass
-
-        # Pick the latest between CodeCommit or SSH usage
-        if codecommit_last_used and ssh_key_last_used:
-            latest = max(codecommit_last_used, ssh_key_last_used)
-        else:
-            latest = codecommit_last_used or ssh_key_last_used
-
-        if latest:
-            usage[username] = latest
-
-    return usage
+    return None
 
 
 def is_user_active(console_last_login, access_key_last_used, codecommit_last_used):
@@ -196,9 +157,6 @@ def main():
             sts_client = session.client("sts")
             account_id = sts_client.get_caller_identity()["Account"]
 
-            # Get CodeCommit credential usage
-            codecommit_usage = get_codecommit_last_used(session)
-
             # List IAM users
             iam_users = list_iam_users(session)
             iam_client = session.client("iam")
@@ -206,16 +164,18 @@ def main():
             if iam_users:
                 for user in iam_users:
                     user_name = user["UserName"]
+                    user_arn = user["Arn"]
                     print(f"    Found user: {user_name}")
 
                     console_last_login = user.get("PasswordLastUsed")
                     access_key_last_used = get_user_access_keys_last_used(
                         iam_client, user_name
                     )
+                    codecommit_last_used = get_codecommit_last_used(
+                        iam_client, user_arn
+                    )
 
                     is_migrated = "Yes" if user_name.lower() in sso_usernames else "No"
-
-                    codecommit_last_used = codecommit_usage.get(user_name)
 
                     user_record = {
                         "Profile": profile,
