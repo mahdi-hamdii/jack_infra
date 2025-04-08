@@ -67,7 +67,7 @@ def is_user_active(console_last_login, access_key_last_used):
 
 
 def list_identity_store_usernames():
-    """Fetch all SSO usernames from Identity Store (only the part before @)."""
+    """Fetch all SSO usernames from Identity Store (only the part before @), stored in lowercase."""
     client = boto3.client("sso-admin")
     instances = client.list_instances()
     identity_store_id = instances["Instances"][0]["IdentityStoreId"]
@@ -90,7 +90,7 @@ def list_identity_store_usernames():
         for user in response.get("Users", []):
             user_name = user.get("UserName", "")
             if "@" in user_name:
-                usernames.add(user_name.split("@")[0])
+                usernames.add(user_name.split("@")[0].lower())
 
         next_token = response.get("NextToken")
         if not next_token:
@@ -135,7 +135,7 @@ def main():
                     console_last_login = user.get('PasswordLastUsed')
                     access_key_last_used = get_user_access_keys_last_used(iam_client, user_name)
 
-                    is_migrated = "Yes" if user_name in sso_usernames else "No"
+                    is_migrated = "Yes" if user_name.lower() in sso_usernames else "No"
 
                     user_record = {
                         "Profile": profile,
