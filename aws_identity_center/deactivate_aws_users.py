@@ -136,7 +136,7 @@ def process_users(csv_file_path, profiles_mapping):
                 remove_console_login(iam_client, username)
                 deactivate_access_keys(iam_client, username)
                 deactivate_ssh_keys(iam_client, username)
-                tag_user_for_deletion(iam_client, username)
+                mark_user_for_deletion(iam_client, username)
 
             except Exception as e:
                 print(

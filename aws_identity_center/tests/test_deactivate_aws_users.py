@@ -4,12 +4,14 @@ import os
 import tempfile
 import pytest
 from moto import mock_aws
+from datetime import datetime, timedelta
+
 from aws_identity_center.deactivate_aws_users import (
     remove_console_login,
     deactivate_access_keys,
     deactivate_ssh_keys,
     process_users,
-    tag_user_for_deletion,
+    mark_user_for_deletion,
 )
 
 
@@ -99,29 +101,35 @@ def iam_client_mock():
 def test_tag_user_for_deletion(iam_client_mock):
     """Test tagging a user for deletion."""
     # First, tag the user
-    tag_user_for_deletion(iam_client_mock, "testuser")
+    mark_user_for_deletion(iam_client_mock, "testuser")
 
     # Verify tag exists
     response = iam_client_mock.list_user_tags(UserName="testuser")
     tags = {tag["Key"]: tag["Value"] for tag in response["Tags"]}
 
-    assert tags.get("MarkForDeletion") == "True"
+    # Calculate date 30 days from today
+    deletion_date = (datetime.now() + timedelta(days=30)).strftime("%Y-%m-%d")
+
+    assert tags.get("markUserForDeletion") == deletion_date
 
 
 @mock_aws
 def test_tag_user_already_tagged(iam_client_mock):
     """Test tagging a user that's already tagged."""
     # Pre-tag manually
+    # Calculate date 30 days from today
+    deletion_date = (datetime.now() + timedelta(days=30)).strftime("%Y-%m-%d")
     iam_client_mock.tag_user(
-        UserName="testuser", Tags=[{"Key": "MarkForDeletion", "Value": "True"}]
+        UserName="testuser",
+        Tags=[{"Key": "markUserForDeletion", "Value": deletion_date}],
     )
 
     # Now run the function again — it should detect and skip
-    tag_user_for_deletion(iam_client_mock, "testuser")
+    mark_user_for_deletion(iam_client_mock, "testuser")
 
     # Confirm still only one tag
     response = iam_client_mock.list_user_tags(UserName="testuser")
     tags = {tag["Key"]: tag["Value"] for tag in response["Tags"]}
 
-    assert tags.get("MarkForDeletion") == "True"
+    assert tags.get("markUserForDeletion") == deletion_date
     assert len(tags) == 1
