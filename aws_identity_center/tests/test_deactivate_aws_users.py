@@ -9,6 +9,7 @@ from aws_identity_center.deactivate_aws_users import (
     deactivate_access_keys,
     deactivate_ssh_keys,
     process_users,
+    tag_user_for_deletion,
 )
 
 
@@ -84,3 +85,43 @@ def test_process_users(iam_setup):
     finally:
         boto3.Session = original_boto3_Session
         os.remove(csv_path)
+
+
+@pytest.fixture
+def iam_client_mock():
+    with mock_aws():
+        client = boto3.client("iam", region_name="us-east-1")
+        client.create_user(UserName="testuser")
+        yield client
+
+
+@mock_aws
+def test_tag_user_for_deletion(iam_client_mock):
+    """Test tagging a user for deletion."""
+    # First, tag the user
+    tag_user_for_deletion(iam_client_mock, "testuser")
+
+    # Verify tag exists
+    response = iam_client_mock.list_user_tags(UserName="testuser")
+    tags = {tag["Key"]: tag["Value"] for tag in response["Tags"]}
+
+    assert tags.get("MarkForDeletion") == "True"
+
+
+@mock_aws
+def test_tag_user_already_tagged(iam_client_mock):
+    """Test tagging a user that's already tagged."""
+    # Pre-tag manually
+    iam_client_mock.tag_user(
+        UserName="testuser", Tags=[{"Key": "MarkForDeletion", "Value": "True"}]
+    )
+
+    # Now run the function again — it should detect and skip
+    tag_user_for_deletion(iam_client_mock, "testuser")
+
+    # Confirm still only one tag
+    response = iam_client_mock.list_user_tags(UserName="testuser")
+    tags = {tag["Key"]: tag["Value"] for tag in response["Tags"]}
+
+    assert tags.get("MarkForDeletion") == "True"
+    assert len(tags) == 1

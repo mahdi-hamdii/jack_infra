@@ -67,6 +67,26 @@ def deactivate_ssh_keys(iam_client, username):
         print(f"[!] Error deactivating SSH keys for {username}: {e}")
 
 
+def tag_user_for_deletion(iam_client, username):
+    """Add a tag 'MarkForDeletion=True' to the user."""
+    try:
+        # Check existing tags first
+        response = iam_client.list_user_tags(UserName=username)
+        existing_tags = {tag["Key"]: tag["Value"] for tag in response.get("Tags", [])}
+
+        if existing_tags.get("MarkForDeletion") == "True":
+            print(f"[!] User {username} already tagged with MarkForDeletion=True")
+            return
+
+        # Add the tag
+        iam_client.tag_user(
+            UserName=username, Tags=[{"Key": "MarkForDeletion", "Value": "True"}]
+        )
+        print(f"[+] User {username} tagged with MarkForDeletion=True")
+    except Exception as e:
+        print(f"[!] Error tagging user {username} for deletion: {e}")
+
+
 def process_users(csv_file_path, profiles_mapping):
     """Deactivate users based on the CSV and correct account/profile matching."""
     with open(csv_file_path, newline="") as csvfile:
@@ -107,6 +127,7 @@ def process_users(csv_file_path, profiles_mapping):
                 remove_console_login(iam_client, username)
                 deactivate_access_keys(iam_client, username)
                 deactivate_ssh_keys(iam_client, username)
+                tag_user_for_deletion(iam_client, username)
 
             except Exception as e:
                 print(
