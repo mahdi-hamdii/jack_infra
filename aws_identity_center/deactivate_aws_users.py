@@ -4,6 +4,8 @@ import argparse
 import os
 import configparser
 
+from datetime import datetime, timedelta
+
 
 def list_profiles_mapping():
     """Map AWS profiles to their account IDs based on SSO login."""
@@ -67,24 +69,31 @@ def deactivate_ssh_keys(iam_client, username):
         print(f"[!] Error deactivating SSH keys for {username}: {e}")
 
 
-def tag_user_for_deletion(iam_client, username):
-    """Add a tag 'MarkForDeletion=True' to the user."""
+def mark_user_for_deletion(iam_client, username):
+    """Tag the user with markUserForDeletion=X (30 days from today) if not already tagged."""
     try:
-        # Check existing tags first
         response = iam_client.list_user_tags(UserName=username)
-        existing_tags = {tag["Key"]: tag["Value"] for tag in response.get("Tags", [])}
+        tags = response.get("Tags", [])
+        tag_keys = {tag["Key"] for tag in tags}
 
-        if existing_tags.get("MarkForDeletion") == "True":
-            print(f"[!] User {username} already tagged with MarkForDeletion=True")
+        if "markUserForDeletion" in tag_keys:
+            print(
+                f"[!] User {username} already has markUserForDeletion tag. Skipping tagging."
+            )
             return
+
+        # Calculate date 30 days from today
+        deletion_date = (datetime.now() + timedelta(days=30)).strftime("%Y-%m-%d")
 
         # Add the tag
         iam_client.tag_user(
-            UserName=username, Tags=[{"Key": "MarkForDeletion", "Value": "True"}]
+            UserName=username,
+            Tags=[{"Key": "markUserForDeletion", "Value": deletion_date}],
         )
-        print(f"[+] User {username} tagged with MarkForDeletion=True")
+        print(f"[+] Tagged {username} with markUserForDeletion={deletion_date}")
+
     except Exception as e:
-        print(f"[!] Error tagging user {username} for deletion: {e}")
+        print(f"[!] Error tagging user {username}: {e}")
 
 
 def process_users(csv_file_path, profiles_mapping):
