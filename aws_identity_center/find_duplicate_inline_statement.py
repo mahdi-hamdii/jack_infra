@@ -30,23 +30,29 @@ def get_inline_policy(sso_client, instance_arn, permission_set_arn):
 
 
 def actions_match(action1, action2):
-    """Check if two actions match (exact or wildcard)."""
+    """Check if two actions match (exact or wildcard). Print invalid actions if detected."""
     if action1 == action2:
         return True
 
     actions1 = action1 if isinstance(action1, list) else [action1]
     actions2 = action2 if isinstance(action2, list) else [action2]
 
-    try:
-        for a1 in actions1:
-            service1, _ = a1.split(":")
-            for a2 in actions2:
-                service2, _ = a2.split(":")
-                if service1 == service2:
-                    return True
-    except Exception as e:
-        print(f"⚠️ Error splitting actions. Actions1={actions1}, Actions2={actions2}")
-        raise e
+    for a1 in actions1:
+        if ":" not in a1:
+            print(f"[!] Warning: action missing service prefix (':') -> '{a1}'")
+            continue
+        service1, action_part1 = a1.split(":", 1)
+
+        for a2 in actions2:
+            if ":" not in a2:
+                print(f"[!] Warning: action missing service prefix (':') -> '{a2}'")
+                continue
+            service2, action_part2 = a2.split(":", 1)
+
+            if service1 == service2:
+                return True
+            if a1 == a2:
+                return True
 
     return False
 
