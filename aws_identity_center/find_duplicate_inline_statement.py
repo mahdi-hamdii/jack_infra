@@ -32,17 +32,31 @@ def normalize_statement(stmt):
     }
 
 def actions_match(action1, action2):
-    """Determine if two actions match exactly or via wildcard."""
+    """Check if actions match, considering wildcards."""
     if action1 == action2:
         return True
-    if "*" in action1:
-        service1, _ = action1.split(":", 1)
-        service2, action2_part = action2.split(":", 1)
-        return service1 == service2
-    if "*" in action2:
-        service2, _ = action2.split(":", 1)
-        service1, action1_part = action1.split(":", 1)
-        return service1 == service2
+
+    if isinstance(action1, list):
+        actions1 = action1
+    else:
+        actions1 = [action1]
+
+    if isinstance(action2, list):
+        actions2 = action2
+    else:
+        actions2 = [action2]
+
+    try:
+        for a1 in actions1:
+            service1, _ = a1.split(":")
+            for a2 in actions2:
+                service2, _ = a2.split(":")
+                if service1 == service2:
+                    return True
+    except ValueError as e:
+        print(f"⚠️  Error splitting actions. Actions1: {actions1}, Actions2: {actions2}")
+        raise e
+
     return False
 
 def resource_covers(resource1, resource2):
