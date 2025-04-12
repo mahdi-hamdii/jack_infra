@@ -29,7 +29,7 @@ def get_inline_policy(sso_client, instance_arn, permission_set_arn):
     return response.get("InlinePolicy")
 
 
-def actions_match(action1, action2):
+def actions_match(action1, action2, context="UnknownPermissionSet"):
     """Check if two actions match (exact or wildcard). Print invalid actions if detected."""
     if action1 == action2:
         return True
@@ -39,13 +39,13 @@ def actions_match(action1, action2):
 
     for a1 in actions1:
         if ":" not in a1:
-            print(f"[!] Warning: action missing service prefix (':') -> '{a1}'")
+            print(f"[!] Warning: action missing service prefix (':') -> '{a1}' in permission set '{context}'")
             continue
         service1, action_part1 = a1.split(":", 1)
 
         for a2 in actions2:
             if ":" not in a2:
-                print(f"[!] Warning: action missing service prefix (':') -> '{a2}'")
+                print(f"[!] Warning: action missing service prefix (':') -> '{a2}' in permission set '{context}'")
                 continue
             service2, action_part2 = a2.split(":", 1)
 
@@ -55,6 +55,7 @@ def actions_match(action1, action2):
                 return True
 
     return False
+
 
 
 def resource_covers(resource1, resource2):
