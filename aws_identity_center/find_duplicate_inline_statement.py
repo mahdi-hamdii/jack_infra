@@ -159,3 +159,6 @@ def main():
                 })
 
     print(f"[+] Duplicates saved to {output_filename}")
+
+if __name__ == "__main__":
+    main()
