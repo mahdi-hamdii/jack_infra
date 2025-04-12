@@ -133,8 +133,6 @@ def main():
 
     permission_sets = list_permission_sets(sso_client, instance_arn)
     print(f"[+] Using Instance ARN: {instance_arn}")
-    print(f"[+] Using Identity Store ID: {identity_store_id}")
-
     print(f"[+] Found {len(permission_sets)} permission sets.")
     for ps in permission_sets:
         print(f"    - {ps}")
