@@ -132,7 +132,12 @@ def main():
     instance_arn = sso_client.list_instances()["Instances"][0]["InstanceArn"]
 
     permission_sets = list_permission_sets(sso_client, instance_arn)
+    print(f"[+] Using Instance ARN: {instance_arn}")
+    print(f"[+] Using Identity Store ID: {identity_store_id}")
 
+    print(f"[+] Found {len(permission_sets)} permission sets.")
+    for ps in permission_sets:
+        print(f"    - {ps}")
     with open(output_filename, "w", newline="") as csvfile:
         fieldnames = ["PermissionSetName", "MatchType", "DuplicateStatement1", "DuplicateStatement2"]
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
