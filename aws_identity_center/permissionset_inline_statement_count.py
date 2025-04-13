@@ -44,6 +44,13 @@ def get_inline_policy(sso_client, instance_arn, permission_set_arn):
     return response.get("InlinePolicy")
 
 
+def calculate_comparisons(statement_count):
+    """Return number of comparisons needed: n*(n-1)/2."""
+    if statement_count <= 1:
+        return 0
+    return (statement_count * (statement_count - 1)) // 2
+
+
 def main():
     today = datetime.today().strftime("%Y-%m-%d")
     output_dir = "outputs"
@@ -58,6 +65,7 @@ def main():
     print(f"[+] Found {len(permission_sets)} permission sets.\n")
 
     total_statements = 0
+    total_comparisons = 0
     detailed_counts = []
 
     for permission_set_arn in permission_sets:
@@ -71,23 +79,29 @@ def main():
             statements = policy.get("Statement", [])
 
             if isinstance(statements, dict):
-                statements = [statements]  # single statement case
+                statements = [statements]
 
             statement_count = len(statements)
-            total_statements += statement_count
 
-        print(f"Permission Set: {permission_set_name} -> {statement_count} statements")
+        comparison_count = calculate_comparisons(statement_count)
+
+        total_statements += statement_count
+        total_comparisons += comparison_count
+
+        print(f"Permission Set: {permission_set_name} -> {statement_count} statements -> {comparison_count} comparisons")
 
         detailed_counts.append({
             "PermissionSetName": permission_set_name,
-            "StatementCount": statement_count
+            "StatementCount": statement_count,
+            "ComparisonCount": comparison_count
         })
 
-    print(f"\n✅ Total statements across all permission sets: {total_statements}")
+    print(f"\n✅ Total statements: {total_statements}")
+    print(f"✅ Total comparisons needed manually: {total_comparisons}")
 
     # Save to CSV
     with open(output_filename, "w", newline="") as csvfile:
-        fieldnames = ["PermissionSetName", "StatementCount"]
+        fieldnames = ["PermissionSetName", "StatementCount", "ComparisonCount"]
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(detailed_counts)
