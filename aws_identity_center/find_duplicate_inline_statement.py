@@ -6,20 +6,14 @@ from datetime import datetime
 
 
 def list_permission_sets(sso_client, instance_arn):
-    """List all permission sets across all pages."""
     permission_sets = []
     next_token = None
 
     while True:
         if next_token:
-            response = sso_client.list_permission_sets(
-                InstanceArn=instance_arn,
-                NextToken=next_token
-            )
+            response = sso_client.list_permission_sets(InstanceArn=instance_arn, NextToken=next_token)
         else:
-            response = sso_client.list_permission_sets(
-                InstanceArn=instance_arn
-            )
+            response = sso_client.list_permission_sets(InstanceArn=instance_arn)
 
         permission_sets.extend(response.get("PermissionSets", []))
         next_token = response.get("NextToken")
@@ -30,7 +24,6 @@ def list_permission_sets(sso_client, instance_arn):
 
 
 def get_permission_set_name(sso_client, instance_arn, permission_set_arn):
-    """Get permission set name."""
     response = sso_client.describe_permission_set(
         InstanceArn=instance_arn,
         PermissionSetArn=permission_set_arn,
@@ -39,7 +32,6 @@ def get_permission_set_name(sso_client, instance_arn, permission_set_arn):
 
 
 def get_inline_policy(sso_client, instance_arn, permission_set_arn):
-    """Fetch inline policy for permission set."""
     response = sso_client.get_inline_policy_for_permission_set(
         InstanceArn=instance_arn,
         PermissionSetArn=permission_set_arn,
@@ -48,12 +40,11 @@ def get_inline_policy(sso_client, instance_arn, permission_set_arn):
 
 
 def action_includes(action1, action2):
-    """Determine if action1 includes action2."""
     if action1 == action2:
         return True
 
     if action1 == "*" or action2 == "*":
-        return True  # "*" covers everything universally
+        return True
 
     if ":" not in action1 or ":" not in action2:
         print(f"[!] Warning: unexpected action format: '{action1}' or '{action2}'")
@@ -66,16 +57,15 @@ def action_includes(action1, action2):
         return False
 
     if act1 == "*":
-        return True  # s3:* covers any s3:GetObject, etc
+        return True
 
     if act2 == "*":
-        return False  # s3:PutObject does not cover s3:*
+        return False
 
     return False
 
 
 def actions_cover_each_other(actions1, actions2):
-    """Determine if actions1 covers actions2."""
     if not isinstance(actions1, list):
         actions1 = [actions1]
     if not isinstance(actions2, list):
@@ -88,7 +78,6 @@ def actions_cover_each_other(actions1, actions2):
 
 
 def resource_covers(resource1, resource2):
-    """Determine if resource1 covers resource2."""
     if resource1 == "*":
         return True
 
@@ -107,17 +96,34 @@ def resource_covers(resource1, resource2):
     return False
 
 
+def extract_action_or_notaction(statement):
+    """Helper to extract Action or NotAction cleanly."""
+    if "Action" in statement:
+        return "Action", statement["Action"]
+    elif "NotAction" in statement:
+        return "NotAction", statement["NotAction"]
+    else:
+        return None, None
+
+
 def statements_match(s1, s2):
-    """Compare two IAM policy statements."""
     try:
         if s1.get("Effect") != s2.get("Effect"):
             return False
 
-        if actions_cover_each_other(s1.get("Action"), s2.get("Action")) and \
-           resource_covers(s1.get("Resource"), s2.get("Resource")):
-            return True
+        key1, actions1 = extract_action_or_notaction(s1)
+        key2, actions2 = extract_action_or_notaction(s2)
 
-        return False
+        if key1 != key2:
+            return False  # cannot match Action with NotAction
+
+        if not actions_cover_each_other(actions1, actions2):
+            return False
+
+        if not resource_covers(s1.get("Resource"), s2.get("Resource")):
+            return False
+
+        return True
 
     except Exception as e:
         print("\n⚠️ Error while matching two statements!")
@@ -127,7 +133,6 @@ def statements_match(s1, s2):
 
 
 def find_duplicate_statements(inline_policy_json):
-    """Find duplicate or covered statements inside inline policy."""
     duplicates = []
     if not inline_policy_json:
         return duplicates
@@ -143,7 +148,7 @@ def find_duplicate_statements(inline_policy_json):
     for i, s1 in enumerate(statements):
         for j, s2 in enumerate(statements):
             if i >= j:
-                continue  # avoid self comparison and repeat
+                continue
 
             key = tuple(sorted([json.dumps(s1, sort_keys=True), json.dumps(s2, sort_keys=True)]))
             if key in checked_pairs:
