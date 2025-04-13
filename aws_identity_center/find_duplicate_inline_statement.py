@@ -6,14 +6,20 @@ from datetime import datetime
 
 
 def list_permission_sets(sso_client, instance_arn):
+    """List all permission sets across all pages."""
     permission_sets = []
     next_token = None
 
     while True:
         if next_token:
-            response = sso_client.list_permission_sets(InstanceArn=instance_arn, NextToken=next_token)
+            response = sso_client.list_permission_sets(
+                InstanceArn=instance_arn,
+                NextToken=next_token
+            )
         else:
-            response = sso_client.list_permission_sets(InstanceArn=instance_arn)
+            response = sso_client.list_permission_sets(
+                InstanceArn=instance_arn
+            )
 
         permission_sets.extend(response.get("PermissionSets", []))
         next_token = response.get("NextToken")
@@ -40,14 +46,14 @@ def get_inline_policy(sso_client, instance_arn, permission_set_arn):
 
 
 def action_includes(action1, action2):
-    if action1 == action2:
-        return True
-
     if action1 == "*" or action2 == "*":
         return True
 
+    if action1 == action2:
+        return True
+
     if ":" not in action1 or ":" not in action2:
-        print(f"[!] Warning: unexpected action format: '{action1}' or '{action2}'")
+        print(f"[!] Warning: unexpected action format -> '{action1}' or '{action2}'")
         return False
 
     service1, act1 = action1.split(":", 1)
@@ -57,10 +63,10 @@ def action_includes(action1, action2):
         return False
 
     if act1 == "*":
-        return True
+        return True  # Example: s3:* covers s3:GetObject
 
     if act2 == "*":
-        return False
+        return False  # Example: s3:GetObject does not cover s3:*
 
     return False
 
@@ -97,11 +103,11 @@ def resource_covers(resource1, resource2):
 
 
 def extract_action_or_notaction(statement):
-    """Helper to extract Action or NotAction cleanly."""
+    """Return tuple (key_type, actions), where key_type is 'Action' or 'NotAction'."""
     if "Action" in statement:
-        return "Action", statement["Action"]
+        return "Action", statement.get("Action")
     elif "NotAction" in statement:
-        return "NotAction", statement["NotAction"]
+        return "NotAction", statement.get("NotAction")
     else:
         return None, None
 
@@ -114,8 +120,12 @@ def statements_match(s1, s2):
         key1, actions1 = extract_action_or_notaction(s1)
         key2, actions2 = extract_action_or_notaction(s2)
 
+        if key1 is None or key2 is None:
+            print(f"[!] Warning: One of the statements is missing both Action and NotAction. Skipping.")
+            return False
+
         if key1 != key2:
-            return False  # cannot match Action with NotAction
+            return False  # Cannot match Action with NotAction
 
         if not actions_cover_each_other(actions1, actions2):
             return False
@@ -170,9 +180,9 @@ def find_duplicate_statements(inline_policy_json):
 
 def main():
     today = datetime.today().strftime("%Y-%m-%d")
-    output_folder = "outputs"
-    os.makedirs(output_folder, exist_ok=True)
-    output_filename = os.path.join(output_folder, f"duplicate_inline_statements_{today}.csv")
+    output_dir = "outputs"
+    os.makedirs(output_dir, exist_ok=True)
+    output_filename = os.path.join(output_dir, f"duplicate_inline_statements_{today}.csv")
 
     sso_client = boto3.client("sso-admin")
     instance_arn = sso_client.list_instances()["Instances"][0]["InstanceArn"]
