@@ -6,13 +6,29 @@ from datetime import datetime
 
 
 def list_permission_sets(sso_client, instance_arn):
-    """List all permission sets."""
-    response = sso_client.list_permission_sets(InstanceArn=instance_arn)
-    return response["PermissionSets"]
+    """List all permission sets across all pages."""
+    permission_sets = []
+    next_token = None
 
+    while True:
+        if next_token:
+            response = sso_client.list_permission_sets(
+                InstanceArn=instance_arn,
+                NextToken=next_token
+            )
+        else:
+            response = sso_client.list_permission_sets(
+                InstanceArn=instance_arn
+            )
+
+        permission_sets.extend(response.get("PermissionSets", []))
+        next_token = response.get("NextToken")
+        if not next_token:
+            break
+
+    return permission_sets
 
 def get_permission_set_name(sso_client, instance_arn, permission_set_arn):
-    """Get the name of a permission set."""
     response = sso_client.describe_permission_set(
         InstanceArn=instance_arn,
         PermissionSetArn=permission_set_arn,
@@ -21,7 +37,6 @@ def get_permission_set_name(sso_client, instance_arn, permission_set_arn):
 
 
 def get_inline_policy(sso_client, instance_arn, permission_set_arn):
-    """Fetch the inline policy of a permission set."""
     response = sso_client.get_inline_policy_for_permission_set(
         InstanceArn=instance_arn,
         PermissionSetArn=permission_set_arn,
@@ -29,57 +44,71 @@ def get_inline_policy(sso_client, instance_arn, permission_set_arn):
     return response.get("InlinePolicy")
 
 
-def actions_match(action1, action2, context="UnknownPermissionSet"):
-    """Check if two actions match (exact or wildcard). Print invalid actions if detected."""
+def action_includes(action1, action2):
     if action1 == action2:
         return True
 
-    actions1 = action1 if isinstance(action1, list) else [action1]
-    actions2 = action2 if isinstance(action2, list) else [action2]
+    if ":" not in action1 or ":" not in action2:
+        print(f"[!] Invalid action format detected: {action1} or {action2}")
+        return False
 
-    for a1 in actions1:
-        if ":" not in a1:
-            print(f"[!] Warning: action missing service prefix (':') -> '{a1}' in permission set '{context}'")
-            continue
-        service1, action_part1 = a1.split(":", 1)
+    service1, act1 = action1.split(":", 1)
+    service2, act2 = action2.split(":", 1)
 
-        for a2 in actions2:
-            if ":" not in a2:
-                print(f"[!] Warning: action missing service prefix (':') -> '{a2}' in permission set '{context}'")
-                continue
-            service2, action_part2 = a2.split(":", 1)
+    if service1 != service2:
+        return False
 
-            if service1 == service2:
-                return True
-            if a1 == a2:
-                return True
+    if act1 == "*":
+        return True  # s3:* covers any s3:Action
+
+    if act2 == "*":
+        return False  # s3:Action does not cover s3:* (inverse not true)
 
     return False
 
 
+def actions_cover_each_other(actions1, actions2):
+    if not isinstance(actions1, list):
+        actions1 = [actions1]
+    if not isinstance(actions2, list):
+        actions2 = [actions2]
+
+    # All actions in 2 must be covered by actions1
+    for a2 in actions2:
+        if not any(action_includes(a1, a2) for a1 in actions1):
+            return False
+    return True
+
 
 def resource_covers(resource1, resource2):
-    """Check if resource1 covers resource2."""
-    if resource1 == "*" or resource1 == resource2:
+    if resource1 == "*":
         return True
-    if isinstance(resource1, list) and resource2 in resource1:
-        return True
+
+    if isinstance(resource1, str) and isinstance(resource2, str):
+        return resource1 == resource2
+
+    if isinstance(resource1, list) and isinstance(resource2, str):
+        return resource2 in resource1
+
+    if isinstance(resource1, str) and isinstance(resource2, list):
+        return all(resource1 == r2 for r2 in resource2)
+
+    if isinstance(resource1, list) and isinstance(resource2, list):
+        return all(r2 in resource1 for r2 in resource2)
+
     return False
 
 
 def statements_match(s1, s2):
-    """Check if two statements match."""
     try:
-        if s1["Effect"] != s2["Effect"]:
+        if s1.get("Effect") != s2.get("Effect"):
             return False
 
-        if not actions_match(s1["Action"], s2["Action"]):
-            return False
+        if actions_cover_each_other(s1.get("Action"), s2.get("Action")) and \
+           resource_covers(s1.get("Resource"), s2.get("Resource")):
+            return True
 
-        if not resource_covers(s1["Resource"], s2["Resource"]):
-            return False
-
-        return True
+        return False
 
     except Exception as e:
         print("\n⚠️ Error while matching two statements!")
@@ -89,7 +118,6 @@ def statements_match(s1, s2):
 
 
 def find_duplicate_statements(inline_policy_json):
-    """Find duplicate or covered statements inside an inline policy."""
     duplicates = []
     if not inline_policy_json:
         return duplicates
@@ -105,7 +133,7 @@ def find_duplicate_statements(inline_policy_json):
     for i, s1 in enumerate(statements):
         for j, s2 in enumerate(statements):
             if i >= j:
-                continue  # Don't compare same or already compared
+                continue
 
             key = tuple(sorted([json.dumps(s1, sort_keys=True), json.dumps(s2, sort_keys=True)]))
             if key in checked_pairs:
@@ -135,8 +163,7 @@ def main():
     permission_sets = list_permission_sets(sso_client, instance_arn)
     print(f"[+] Using Instance ARN: {instance_arn}")
     print(f"[+] Found {len(permission_sets)} permission sets.")
-    for ps in permission_sets:
-        print(f"    - {ps}")
+
     with open(output_filename, "w", newline="") as csvfile:
         fieldnames = ["PermissionSetName", "MatchType", "DuplicateStatement1", "DuplicateStatement2"]
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
@@ -160,6 +187,7 @@ def main():
                 })
 
     print(f"[+] Duplicates saved to {output_filename}")
+
 
 if __name__ == "__main__":
     main()

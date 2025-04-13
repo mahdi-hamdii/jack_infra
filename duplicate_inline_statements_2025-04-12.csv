@@ -1,0 +1,5 @@
+PermissionSetName,MatchType,DuplicateStatement1,DuplicateStatement2
+AdminPS,WildcardMatch,"{""Effect"": ""Allow"", ""Action"": ""s3:*"", ""Resource"": ""*"", ""Condition"": {}}","{""Effect"": ""Allow"", ""Action"": ""s3:GetObject"", ""Resource"": ""*"", ""Condition"": {}}"
+AdminPS,WildcardMatch,"{""Effect"": ""Allow"", ""Action"": ""s3:*"", ""Resource"": ""*"", ""Condition"": {}}","{""Effect"": ""Allow"", ""Action"": ""s3:PutObject"", ""Resource"": ""*"", ""Condition"": {}}"
+AdminPS,ExactMatch,"{""Effect"": ""Deny"", ""Action"": ""s3:DeleteObject"", ""Resource"": ""*"", ""Condition"": {}}","{""Effect"": ""Deny"", ""Action"": ""s3:DeleteObject"", ""Resource"": ""*"", ""Condition"": {}}"
+DevPS,ExactMatch,"{""Effect"": ""Allow"", ""Action"": ""ec2:StartInstances"", ""Resource"": ""*"", ""Condition"": {}}","{""Effect"": ""Allow"", ""Action"": ""ec2:StartInstances"", ""Resource"": ""*"", ""Condition"": {}}"
