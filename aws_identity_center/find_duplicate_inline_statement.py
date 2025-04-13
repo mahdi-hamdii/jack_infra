@@ -28,6 +28,7 @@ def list_permission_sets(sso_client, instance_arn):
 
     return permission_sets
 
+
 def get_permission_set_name(sso_client, instance_arn, permission_set_arn):
     response = sso_client.describe_permission_set(
         InstanceArn=instance_arn,
@@ -100,9 +101,14 @@ def resource_covers(resource1, resource2):
 
 
 def statements_match(s1, s2):
+    """Compare two statements for duplication."""
     try:
         if s1.get("Effect") != s2.get("Effect"):
             return False
+
+        # Handle NotAction detection
+        if "NotAction" in s1 or "NotAction" in s2:
+            return "NeedsManualCheck"
 
         if actions_cover_each_other(s1.get("Action"), s2.get("Action")) and \
            resource_covers(s1.get("Resource"), s2.get("Resource")):
@@ -143,10 +149,14 @@ def find_duplicate_statements(inline_policy_json):
 
             if s1 == s2:
                 match_type = "ExactMatch"
-            elif statements_match(s1, s2):
-                match_type = "WildcardMatch"
             else:
-                continue
+                match_result = statements_match(s1, s2)
+                if match_result == True:
+                    match_type = "WildcardMatch"
+                elif match_result == "NeedsManualCheck":
+                    match_type = "NotActionCheckRequired"
+                else:
+                    continue
 
             duplicates.append((match_type, s1, s2))
 
@@ -155,7 +165,9 @@ def find_duplicate_statements(inline_policy_json):
 
 def main():
     today = datetime.today().strftime("%Y-%m-%d")
-    output_filename = f"duplicate_inline_statements_{today}.csv"
+    output_dir = "outputs"
+    os.makedirs(output_dir, exist_ok=True)
+    output_filename = os.path.join(output_dir, f"duplicate_inline_statements_{today}.csv")
 
     sso_client = boto3.client("sso-admin")
     instance_arn = sso_client.list_instances()["Instances"][0]["InstanceArn"]
