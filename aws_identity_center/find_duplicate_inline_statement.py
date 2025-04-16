@@ -102,6 +102,25 @@ def resource_covers(resource1, resource2):
     return False
 
 
+def condition_covers(cond1, cond2):
+    """
+    Check if cond1 is equal to or more permissive (covers) cond2.
+    For simplicity:
+    - If cond1 is None and cond2 is None: return True
+    - If cond1 is None and cond2 exists: cond1 covers cond2 (less restrictive)
+    - If cond2 is None and cond1 exists: cond1 does NOT cover cond2 (more restrictive)
+    - If both exist: must be equal
+    """
+    if not cond1 and not cond2:
+        return True
+    if not cond1 and cond2:
+        return True
+    if cond1 and not cond2:
+        return False
+
+    # Both exist - must be identical for coverage
+    return cond1 == cond2
+
 def extract_action_or_notaction(statement):
     """Return tuple (key_type, actions), where key_type is 'Action' or 'NotAction'."""
     if "Action" in statement:
@@ -127,13 +146,21 @@ def statements_match(s1, s2):
         if key1 != key2:
             return False  # Cannot match Action with NotAction
 
-        if not actions_cover_each_other(actions1, actions2):
-            return False
+        # Statement 1 covers Statement 2
+        s1_covers_s2 = (
+            actions_cover_each_other(actions1, actions2)
+            and resource_covers(s1.get("Resource"), s2.get("Resource"))
+            and condition_covers(s1.get("Condition"), s2.get("Condition"))
+        )
 
-        if not resource_covers(s1.get("Resource"), s2.get("Resource")):
-            return False
+        # Statement 2 covers Statement 1
+        s2_covers_s1 = (
+            actions_cover_each_other(actions2, actions1)
+            and resource_covers(s2.get("Resource"), s1.get("Resource"))
+            and condition_covers(s2.get("Condition"), s1.get("Condition"))
+        )
 
-        return True
+        return s1_covers_s2 or s2_covers_s1
 
     except Exception as e:
         print("\n⚠️ Error while matching two statements!")
