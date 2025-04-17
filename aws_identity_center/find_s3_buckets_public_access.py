@@ -91,7 +91,7 @@ def check_s3_public_access(profile):
                 results.append({
                     "Account": profile,
                     "BucketArn": bucket_arn,
-                    "BlockPublicAccess": "Client lacks get_public_access_block"
+                    "BlockPublicAccess": "off"
                 })
 
     except Exception as e:
