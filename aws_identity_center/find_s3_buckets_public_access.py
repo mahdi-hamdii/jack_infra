@@ -23,8 +23,6 @@ def list_profiles():
 def is_s3_client_valid(session, profile):
     try:
         s3_client = session.client("s3")
-        print(f"[DEBUG] s3_client type: {type(s3_client)}")
-        print(f"[DEBUG] s3_client methods: {dir(s3_client)}")
 
         # Test list buckets
         s3_client.list_buckets()
