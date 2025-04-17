@@ -65,9 +65,9 @@ def check_s3_public_access(profile):
             bucket_name = bucket["Name"]
             bucket_arn = f"arn:aws:s3:::{bucket_name}"
 
-            if hasattr(s3_client, "get_bucket_public_access_block"):
+            if hasattr(s3_client, "get_public_access_block"):
                 try:
-                    pab = s3_client.get_bucket_public_access_block(Bucket=bucket_name)
+                    pab = s3_client.get_public_access_block(Bucket=bucket_name)
                     pab_config = pab.get("PublicAccessBlockConfiguration", {})
 
                     if not all(pab_config.values()):
@@ -89,11 +89,11 @@ def check_s3_public_access(profile):
                 except Exception as e:
                     print(f"[!] Unexpected error on bucket {bucket_name}: {e}")
             else:
-                print(f"[!] Method 'get_bucket_public_access_block' is not available for this s3 client.")
+                print(f"[!] Method 'get_public_access_block' is not available for this s3 client.")
                 results.append({
                     "Account": profile,
                     "BucketArn": bucket_arn,
-                    "Reason": "Client lacks get_bucket_public_access_block"
+                    "Reason": "Client lacks get_public_access_block"
                 })
 
     except Exception as e:
