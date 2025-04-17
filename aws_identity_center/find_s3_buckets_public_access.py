@@ -72,7 +72,7 @@ def check_s3_public_access(profile):
                         results.append({
                             "Account": profile,
                             "BucketArn": bucket_arn,
-                            "Reason": "Block public access not fully enabled"
+                            "BlockPublicAccess": "partial"
                         })
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
@@ -80,7 +80,7 @@ def check_s3_public_access(profile):
                         results.append({
                             "Account": profile,
                             "BucketArn": bucket_arn,
-                            "Reason": "No block public access config"
+                            "Reason": "off"
                         })
                     else:
                         print(f"[!] Error checking bucket {bucket_name}: {e}")
