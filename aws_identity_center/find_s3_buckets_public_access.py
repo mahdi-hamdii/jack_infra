@@ -80,7 +80,7 @@ def check_s3_public_access(profile):
                         results.append({
                             "Account": profile,
                             "BucketArn": bucket_arn,
-                            "Reason": "off"
+                            "BlockPublicAccess": "off"
                         })
                     else:
                         print(f"[!] Error checking bucket {bucket_name}: {e}")
@@ -91,7 +91,7 @@ def check_s3_public_access(profile):
                 results.append({
                     "Account": profile,
                     "BucketArn": bucket_arn,
-                    "Reason": "Client lacks get_public_access_block"
+                    "BlockPublicAccess": "Client lacks get_public_access_block"
                 })
 
     except Exception as e:
@@ -104,7 +104,7 @@ def save_to_csv(results):
     os.makedirs("outputs", exist_ok=True)
     filename = f"outputs/public_s3_buckets_{datetime.today().strftime('%Y-%m-%d')}.csv"
     with open(filename, "w", newline="") as csvfile:
-        fieldnames = ["Account", "BucketArn", "Reason"]
+        fieldnames = ["Account", "BucketArn", "BlockPublicAccess"]
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
         for row in results:
