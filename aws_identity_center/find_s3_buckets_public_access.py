@@ -22,11 +22,14 @@ def list_profiles():
 
 def is_s3_client_valid(session, profile):
     try:
-        # Try listing buckets
         s3_client = session.client("s3")
+        print(f"[DEBUG] s3_client type: {type(s3_client)}")
+        print(f"[DEBUG] s3_client methods: {dir(s3_client)}")
+
+        # Test list buckets
         s3_client.list_buckets()
 
-        # Try STS to confirm who we are
+        # Verify identity
         sts_client = session.client("sts")
         identity = sts_client.get_caller_identity()
         print(f"[+] Authenticated as: {identity['Arn']}")
@@ -62,26 +65,36 @@ def check_s3_public_access(profile):
             bucket_name = bucket["Name"]
             bucket_arn = f"arn:aws:s3:::{bucket_name}"
 
-            try:
-                pab = s3_client.get_bucket_public_access_block(Bucket=bucket_name)
-                pab_config = pab.get("PublicAccessBlockConfiguration", {})
+            if hasattr(s3_client, "get_bucket_public_access_block"):
+                try:
+                    pab = s3_client.get_bucket_public_access_block(Bucket=bucket_name)
+                    pab_config = pab.get("PublicAccessBlockConfiguration", {})
 
-                if not all(pab_config.values()):
-                    results.append({
-                        "Account": profile,
-                        "BucketArn": bucket_arn,
-                        "Reason": "Block public access not fully enabled"
-                    })
-            except botocore.exceptions.ClientError as e:
-                error_code = e.response["Error"]["Code"]
-                if error_code == "NoSuchPublicAccessBlockConfiguration":
-                    results.append({
-                        "Account": profile,
-                        "BucketArn": bucket_arn,
-                        "Reason": "No block public access config"
-                    })
-                else:
-                    print(f"[!] Error checking bucket {bucket_name}: {e}")
+                    if not all(pab_config.values()):
+                        results.append({
+                            "Account": profile,
+                            "BucketArn": bucket_arn,
+                            "Reason": "Block public access not fully enabled"
+                        })
+                except botocore.exceptions.ClientError as e:
+                    error_code = e.response["Error"]["Code"]
+                    if error_code == "NoSuchPublicAccessBlockConfiguration":
+                        results.append({
+                            "Account": profile,
+                            "BucketArn": bucket_arn,
+                            "Reason": "No block public access config"
+                        })
+                    else:
+                        print(f"[!] Error checking bucket {bucket_name}: {e}")
+                except Exception as e:
+                    print(f"[!] Unexpected error on bucket {bucket_name}: {e}")
+            else:
+                print(f"[!] Method 'get_bucket_public_access_block' is not available for this s3 client.")
+                results.append({
+                    "Account": profile,
+                    "BucketArn": bucket_arn,
+                    "Reason": "Client lacks get_bucket_public_access_block"
+                })
 
     except Exception as e:
         print(f"[!] Error while listing buckets for profile {profile}: {e}")
