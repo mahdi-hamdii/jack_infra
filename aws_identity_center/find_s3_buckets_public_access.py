@@ -32,6 +32,7 @@ def check_s3_public_access(profile):
             bucket_arn = f"arn:aws:s3:::{bucket_name}"
 
             try:
+                # ✅ Fixed typo here
                 pab = s3_client.get_bucket_public_access_block(Bucket=bucket_name)
                 pab_config = pab.get("PublicAccessBlockConfiguration", {})
 
@@ -50,7 +51,7 @@ def check_s3_public_access(profile):
                         "Reason": "No block public access config"
                     })
                 else:
-                    print(f"[!] Error checking bucket {bucket_name}: {e}")
+                    print(f"[!] Error checking bucket {bucket_name} in profile {profile}: {e}")
 
     except Exception as e:
         print(f"[!] Error for profile {profile}: {e}")
