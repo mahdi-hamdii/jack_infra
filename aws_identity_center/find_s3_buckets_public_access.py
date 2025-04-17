@@ -20,9 +20,40 @@ def list_profiles():
     return profiles
 
 
+def is_s3_client_valid(session, profile):
+    try:
+        # Try listing buckets
+        s3_client = session.client("s3")
+        s3_client.list_buckets()
+
+        # Try STS to confirm who we are
+        sts_client = session.client("sts")
+        identity = sts_client.get_caller_identity()
+        print(f"[+] Authenticated as: {identity['Arn']}")
+
+        return s3_client
+
+    except botocore.exceptions.NoCredentialsError:
+        print(f"[!] No credentials found for profile: {profile}")
+    except botocore.exceptions.PartialCredentialsError:
+        print(f"[!] Incomplete credentials for profile: {profile}")
+    except botocore.exceptions.ClientError as e:
+        print(f"[!] ClientError for profile {profile}: {e}")
+    except Exception as e:
+        print(f"[!] Unexpected error for profile {profile}: {e}")
+    
+    return None
+
+
 def check_s3_public_access(profile):
+    print(f"[*] Creating session for profile: {profile}")
     session = boto3.Session(profile_name=profile)
-    s3_client = session.client("s3")
+    s3_client = is_s3_client_valid(session, profile)
+
+    if not s3_client:
+        print(f"[!] Skipping profile {profile} due to client issues.")
+        return []
+
     results = []
 
     try:
@@ -32,7 +63,6 @@ def check_s3_public_access(profile):
             bucket_arn = f"arn:aws:s3:::{bucket_name}"
 
             try:
-                # ✅ Fixed typo here
                 pab = s3_client.get_bucket_public_access_block(Bucket=bucket_name)
                 pab_config = pab.get("PublicAccessBlockConfiguration", {})
 
@@ -51,10 +81,10 @@ def check_s3_public_access(profile):
                         "Reason": "No block public access config"
                     })
                 else:
-                    print(f"[!] Error checking bucket {bucket_name} in profile {profile}: {e}")
+                    print(f"[!] Error checking bucket {bucket_name}: {e}")
 
     except Exception as e:
-        print(f"[!] Error for profile {profile}: {e}")
+        print(f"[!] Error while listing buckets for profile {profile}: {e}")
 
     return results
 
